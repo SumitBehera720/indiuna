@@ -31,6 +31,7 @@ import Lenis from 'lenis';
 export default function App() {
   // Navigation & Tabs State
   const [activeTab, setActiveTab] = useState('customization');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   // Carousel State
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -217,7 +218,7 @@ export default function App() {
       {/* 2. Header / Navbar */}
       <header className="header">
         <div className="container navbar">
-          <button className="menu-toggle" aria-label="Open Menu">
+          <button className="menu-toggle" aria-label="Open Menu" onClick={() => setIsMobileMenuOpen(true)}>
             <Menu />
           </button>
           
@@ -841,6 +842,42 @@ export default function App() {
             </div>
           </div>
         )}
+      </div>
+
+      {/* 17. Slideout Mobile Menu Drawer */}
+      <div 
+        className={`mobile-menu-overlay ${isMobileMenuOpen ? 'open' : ''}`}
+        onClick={() => setIsMobileMenuOpen(false)}
+      >
+        <div className="mobile-menu" onClick={(e) => e.stopPropagation()}>
+          <div className="mobile-menu-header">
+            <div className="logo-container" style={{ alignItems: 'flex-start' }}>
+              <span className="logo-text">INDIUNA</span>
+              <span className="logo-subtext">Embroidery & Customs</span>
+            </div>
+            <button className="mobile-menu-close" onClick={() => setIsMobileMenuOpen(false)}>
+              <X />
+            </button>
+          </div>
+          <div className="mobile-menu-body">
+            <nav className="mobile-nav-links">
+              <a href="#best-sellers" onClick={() => setIsMobileMenuOpen(false)}>New In</a>
+              <a href="#best-sellers" onClick={() => setIsMobileMenuOpen(false)}>T-Shirts</a>
+              <a href="#best-sellers" onClick={() => setIsMobileMenuOpen(false)}>Shirts</a>
+              <a href="#best-sellers" onClick={() => setIsMobileMenuOpen(false)}>Sweatshirts</a>
+              <a href="#best-sellers" onClick={() => setIsMobileMenuOpen(false)}>Patches</a>
+              <a href="#customization-services" onClick={() => setIsMobileMenuOpen(false)}>Custom Embroidery</a>
+            </nav>
+            <div className="mobile-menu-footer">
+              <p>Premium custom embroidery & structured streetwear styles. Crafted in-house, designed for the bold.</p>
+              <div className="footer-socials" style={{ marginTop: '20px' }}>
+                <a href="https://instagram.com" className="footer-social-link" aria-label="Instagram"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="20" x="2" y="2" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/></svg></a>
+                <a href="https://facebook.com" className="footer-social-link" aria-label="Facebook"><Smile /></a>
+                <a href="https://youtube.com" className="footer-social-link" aria-label="Youtube"><Play /></a>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </>
   );
