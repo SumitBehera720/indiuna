@@ -34,7 +34,8 @@ import {
 import Lenis from 'lenis';
 
 export default function App() {
-  // Navigation & View States
+  // Loading & View States
+  const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('customization');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [currentView, setCurrentView] = useState('home'); // 'home' | 'product'
@@ -43,8 +44,14 @@ export default function App() {
   // Announcement Bar Slider State
   const [currentAnnouncement, setCurrentAnnouncement] = useState(0);
 
-  // Carousel State
+  // Carousel & Filtering States
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [freshDropsSlide, setFreshDropsSlide] = useState(0);
+  const [newArrivalsIndex, setNewArrivalsIndex] = useState(10); // continuous, middle copy starts at 10
+  const [newArrivalsNoAnim, setNewArrivalsNoAnim] = useState(false);
+  const [activeGenderTab, setActiveGenderTab] = useState('ALL');
+  const [activeSubCategory, setActiveSubCategory] = useState('ALL');
+
   const heroSlides = [
     {
       tag: "Premium Embroidered",
@@ -72,7 +79,15 @@ export default function App() {
     }
   ];
 
-  // Auto-play Announcement Bar & Hero Slide
+  // Loader timer
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Auto-play Announcement Bar, Hero Slide, Fresh Drops & New Arrivals
   useEffect(() => {
     const annTimer = setInterval(() => {
       setCurrentAnnouncement((prev) => (prev + 1) % 3);
@@ -82,11 +97,69 @@ export default function App() {
       setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
     }, 6000);
 
+    const freshTimer = setInterval(() => {
+      setFreshDropsSlide((prev) => (prev + 1) % 3);
+    }, 5000);
+
+    const arrivalsTimer = setInterval(() => {
+      setNewArrivalsIndex((prev) => prev + 1); // continuous increment, no modulo
+    }, 4000);
+
     return () => {
       clearInterval(annTimer);
       clearInterval(slideTimer);
+      clearInterval(freshTimer);
+      clearInterval(arrivalsTimer);
     };
   }, [heroSlides.length]);
+
+  // Silent infinite-loop reset for New Arrivals
+  // After the CSS transition (0.65s) completes, silently reposition the track
+  // so continuous forward/backward never shows a jump-back
+  useEffect(() => {
+    if (newArrivalsIndex >= 20) {
+      // Went past last item of middle copy → jump to same position in middle copy
+      const t = setTimeout(() => {
+        setNewArrivalsNoAnim(true);
+        setNewArrivalsIndex(newArrivalsIndex - 10);
+        requestAnimationFrame(() => requestAnimationFrame(() => setNewArrivalsNoAnim(false)));
+      }, 700);
+      return () => clearTimeout(t);
+    } else if (newArrivalsIndex <= 9) {
+      // Went before first item of middle copy → jump to same position in middle copy
+      const t = setTimeout(() => {
+        setNewArrivalsNoAnim(true);
+        setNewArrivalsIndex(newArrivalsIndex + 10);
+        requestAnimationFrame(() => requestAnimationFrame(() => setNewArrivalsNoAnim(false)));
+      }, 700);
+      return () => clearTimeout(t);
+    }
+  }, [newArrivalsIndex]);
+
+  // Scroll Reveal Intersection Observer
+  useEffect(() => {
+    if (isLoading) return;
+    
+    // Tiny delay to ensure DOM is fully rendered
+    const initObserver = setTimeout(() => {
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('reveal-active');
+          }
+        });
+      }, { threshold: 0.08 });
+
+      const elements = document.querySelectorAll('.reveal-section');
+      elements.forEach(el => observer.observe(el));
+
+      return () => {
+        elements.forEach(el => observer.unobserve(el));
+      };
+    }, 100);
+
+    return () => clearTimeout(initObserver);
+  }, [isLoading, currentView]);
 
   // Wishlist State
   const [wishlist, setWishlist] = useState([]);
@@ -147,8 +220,11 @@ export default function App() {
       id: 1,
       name: "Demon Mask Embroidered Oversized Tee",
       price: 1299,
+      originalPrice: 1799,
       tag: "NEW",
       category: "Oversized T-Shirts",
+      subCategories: ["OVERSIZED T-SHIRTS", "T-SHIRTS", "TRENDING", "NEW COLLECTIONS"],
+      gender: "UNISEX",
       image: "/images/products/demon_mask_tee.png",
       desc: "This oversized streetwear tee features a premium, thick embroidered Japanese Oni demon mask on the back. Made from heavy-weight 240 GSM organic cotton fabric to ensure both longevity and comfort.",
       rating: 4.9,
@@ -163,8 +239,11 @@ export default function App() {
       id: 2,
       name: "Chaos Anime Embroidered T-Shirt",
       price: 1199,
+      originalPrice: 1599,
       tag: "BEST SELLER",
       category: "Regular Fit T-Shirts",
+      subCategories: ["REGULAR FIT T-SHIRTS", "T-SHIRTS", "TRENDING"],
+      gender: "UNISEX",
       image: "/images/products/chaos_anime_tee.png",
       desc: "Inspired by raw urban cyberpunk street style, this high-contrast white t-shirt boasts a fine-line black embroidered anime-style illustration on the back. Perfect for layering.",
       rating: 4.7,
@@ -179,8 +258,11 @@ export default function App() {
       id: 3,
       name: "Itachi Uchiha Embroidered T-Shirt",
       price: 1249,
+      originalPrice: 1699,
       tag: "TRENDING",
       category: "Oversized T-Shirts",
+      subCategories: ["OVERSIZED T-SHIRTS", "T-SHIRTS", "NEW COLLECTIONS"],
+      gender: "UNISEX",
       image: "/images/products/itachi_uchiha_tee.png",
       desc: "Featuring the legendary red sharingan eyes and symbolic red clouds embroidered meticulously on the back. Heavy-weight black cotton streetwear fit with premium reinforcement stitches.",
       rating: 4.8,
@@ -195,8 +277,11 @@ export default function App() {
       id: 4,
       name: "Akatsuki Cloud Embroidered T-Shirt",
       price: 1099,
+      originalPrice: 1499,
       tag: "LIMITED EDITION",
       category: "Regular Fit T-Shirts",
+      subCategories: ["REGULAR FIT T-SHIRTS", "T-SHIRTS"],
+      gender: "UNISEX",
       image: "/images/products/akatsuki_cloud_tee.png",
       desc: "A sleek, minimalist design featuring a small, clean red embroidered Akatsuki cloud on the left chest. Subtle styling with premium-grade embroidery thread for Naruto fans.",
       rating: 4.6,
@@ -205,6 +290,144 @@ export default function App() {
         "/images/products/akatsuki_cloud_tee.png",
         "https://images.unsplash.com/photo-1529139574466-a303027c1d8b?q=80&w=600&auto=format&fit=crop",
         "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?q=80&w=600&auto=format&fit=crop"
+      ]
+    },
+    {
+      id: 5,
+      name: "Earth Moss Baggy Jeans",
+      price: 2199,
+      originalPrice: 2999,
+      tag: "27% OFF",
+      category: "Jeans",
+      subCategories: ["NEW COLLECTIONS", "TRENDING"],
+      gender: "WOMEN",
+      image: "https://images.unsplash.com/photo-1541099649105-f69ad21f3246?q=80&w=600&auto=format&fit=crop",
+      desc: "Premium heavyweight denim utility jeans in earthy moss green. Relaxed baggy fit with multiple deep pockets, contrast stitches, and subtle brand embroidery on the back pocket.",
+      rating: 4.7,
+      reviewCount: 22,
+      thumbnails: [
+        "https://images.unsplash.com/photo-1541099649105-f69ad21f3246?q=80&w=600&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1475180098004-ca77a66827ae?q=80&w=600&auto=format&fit=crop"
+      ]
+    },
+    {
+      id: 6,
+      name: "Peach Haze Baggy Jeans",
+      price: 2199,
+      originalPrice: 2999,
+      tag: "27% OFF",
+      category: "Jeans",
+      subCategories: ["NEW COLLECTIONS", "TRENDING"],
+      gender: "WOMEN",
+      image: "https://images.unsplash.com/photo-1565084888279-aca607ecad0c?q=80&w=600&auto=format&fit=crop",
+      desc: "Chic dusty peach baggy jeans crafted from 100% organic cotton denim. High-rise fit, reinforced belt loops, and premium custom embroidery detail.",
+      rating: 4.8,
+      reviewCount: 31,
+      thumbnails: [
+        "https://images.unsplash.com/photo-1565084888279-aca607ecad0c?q=80&w=600&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?q=80&w=600&auto=format&fit=crop"
+      ]
+    },
+    {
+      id: 7,
+      name: "Tactical Olive Cargos",
+      price: 2499,
+      originalPrice: 3299,
+      tag: "HOT",
+      category: "Cargos",
+      subCategories: ["NEW COLLECTIONS"],
+      gender: "MEN",
+      image: "https://images.unsplash.com/photo-1517423568366-8b83523034fd?q=80&w=600&auto=format&fit=crop",
+      desc: "Heavy-duty ripstop utility cargos. Feature 6 pockets, adjustable drawstrings, and embroidered streetwear logo detail.",
+      rating: 4.9,
+      reviewCount: 18,
+      thumbnails: [
+        "https://images.unsplash.com/photo-1517423568366-8b83523034fd?q=80&w=600&auto=format&fit=crop"
+      ]
+    },
+    {
+      id: 8,
+      name: "Sandstorm Multi-Pocket Cargos",
+      price: 2499,
+      originalPrice: 3299,
+      tag: "LIMITED",
+      category: "Cargos",
+      subCategories: ["NEW COLLECTIONS", "TRENDING"],
+      gender: "UNISEX",
+      image: "https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?q=80&w=600&auto=format&fit=crop",
+      desc: "Desert sand utility pants with detailed knee panels, zip compartments, and signature branding embroidery.",
+      rating: 4.5,
+      reviewCount: 12,
+      thumbnails: [
+        "https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?q=80&w=600&auto=format&fit=crop"
+      ]
+    },
+    {
+      id: 9,
+      name: "Pleated Streetwear Skirt",
+      price: 1499,
+      originalPrice: 1999,
+      tag: "NEW",
+      category: "Skirts",
+      subCategories: ["NEW COLLECTIONS"],
+      gender: "WOMEN",
+      image: "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?q=80&w=600&auto=format&fit=crop",
+      desc: "High-waisted pleated tennis skirt featuring a custom embroidered logo along the hemline. Built-in inner shorts for all-day comfort.",
+      rating: 4.6,
+      reviewCount: 15,
+      thumbnails: [
+        "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?q=80&w=600&auto=format&fit=crop"
+      ]
+    },
+    {
+      id: 10,
+      name: "Signature Comfort Boxers (Set of 3)",
+      price: 899,
+      originalPrice: 1199,
+      tag: "BEST VALUE",
+      category: "Underwear",
+      subCategories: ["NEW COLLECTIONS"],
+      gender: "MEN",
+      image: "https://images.unsplash.com/photo-1582533561751-ef6f6ab93a2e?q=80&w=600&auto=format&fit=crop",
+      desc: "Ultra-soft modal cotton underwear with premium elastic waistband and embroidered brand initials.",
+      rating: 4.7,
+      reviewCount: 42,
+      thumbnails: [
+        "https://images.unsplash.com/photo-1582533561751-ef6f6ab93a2e?q=80&w=600&auto=format&fit=crop"
+      ]
+    },
+    {
+      id: 11,
+      name: "Cyberpunk Embroidered Button-Up Shirt",
+      price: 1599,
+      originalPrice: 2199,
+      tag: "HOT DROP",
+      category: "Shirts",
+      subCategories: ["SHIRTS", "TRENDING", "NEW COLLECTIONS"],
+      gender: "UNISEX",
+      image: "https://images.unsplash.com/photo-1596755094514-f87e34085b2c?q=80&w=600&auto=format&fit=crop",
+      desc: "Premium structure button-up streetwear shirt featuring detailed cyber-mesh logo embroidery on the collar and back. Heavyweight canvas-like feel.",
+      rating: 4.8,
+      reviewCount: 19,
+      thumbnails: [
+        "https://images.unsplash.com/photo-1596755094514-f87e34085b2c?q=80&w=600&auto=format&fit=crop"
+      ]
+    },
+    {
+      id: 12,
+      name: "Sakura Blossom Streetwear Sweatshirt",
+      price: 1899,
+      originalPrice: 2499,
+      tag: "NEW DROP",
+      category: "Sweatshirts",
+      subCategories: ["SWEATSHIRTS", "NEW COLLECTIONS", "TRENDING"],
+      gender: "UNISEX",
+      image: "https://images.unsplash.com/photo-1556821840-3a63f95609a7?q=80&w=600&auto=format&fit=crop",
+      desc: "Cozy custom pink and white sakura floral branches embroidered meticulously on a heavy black cotton blend sweatshirt.",
+      rating: 4.9,
+      reviewCount: 26,
+      thumbnails: [
+        "https://images.unsplash.com/photo-1556821840-3a63f95609a7?q=80&w=600&auto=format&fit=crop"
       ]
     }
   ];
@@ -269,6 +492,23 @@ export default function App() {
 
   return (
     <>
+      {/* 0. Page Loader */}
+      <div className={`page-loader ${!isLoading ? 'fade-out' : ''}`}>
+        <div className="loader-inner">
+          <div className="loader-brand">
+            {'INDIUNA'.split('').map((letter, i) => (
+              <span key={i} className="loader-letter" style={{ animationDelay: `${i * 0.08}s` }}>
+                {letter}
+              </span>
+            ))}
+          </div>
+          <p className="loader-tagline">EMBROIDERY &amp; CUSTOMS</p>
+          <div className="loader-bar">
+            <div className="loader-bar-fill"></div>
+          </div>
+        </div>
+      </div>
+
       {/* 1. Top Announcement Bar */}
       <div className="announcement-bar">
         <div className="container announcement-bar-content">
@@ -320,333 +560,324 @@ export default function App() {
       {/* 3. Render Views dynamically */}
       {currentView === 'home' ? (
         <>
-          {/* Sub-navbar Navigation Tabs */}
-          <div className="subnav-tabs">
-            <div className="subnav-container">
-              <button 
-                className={`subnav-tab ${activeTab === 'customization' ? 'active' : ''}`}
-                onClick={() => setActiveTab('customization')}
+          {/* Hero Banner — 3 auto-sliding images */}
+          <section className="custom-hero-section">
+            {[
+              {
+                image: '/images/hero_banner.png',
+                tag: 'Premium Embroidered',
+                title: 'Streetwear Crafted\nto Stand Out.',
+                cta: 'Shop New Arrivals'
+              },
+              {
+                image: 'https://images.unsplash.com/photo-1578932750294-f5075e85f44a?q=80&w=1400&auto=format&fit=crop',
+                tag: 'Limited Drop',
+                title: 'Artistry in\nEvery Stitch.',
+                cta: 'Explore Drop'
+              },
+              {
+                image: 'https://images.unsplash.com/photo-1556821840-3a63f95609a7?q=80&w=1400&auto=format&fit=crop',
+                tag: 'Custom Customs',
+                title: 'Your Design,\nOur Craft.',
+                cta: 'Start Designing'
+              }
+            ].map((slide, idx) => (
+              <div
+                key={idx}
+                className={`hero-slide ${currentSlide === idx ? 'active' : ''}`}
               >
-                <div className="subnav-icon-wrapper">
-                  <Scissors />
+                <div
+                  className="hero-slide-bg"
+                  style={{ backgroundImage: `url('${slide.image}')` }}
+                />
+                <div className="hero-slide-overlay" />
+                <div className="hero-slide-content container">
+                  <span className="hero-slide-tag">{slide.tag}</span>
+                  <h1 className="hero-slide-title">
+                    {slide.title.split('\n').map((line, li) => (
+                      <span key={li}>{line}<br /></span>
+                    ))}
+                  </h1>
+                  <button className="hero-slide-cta">{slide.cta}</button>
                 </div>
-                <div className="subnav-info">
-                  <span className="subnav-label">Customization</span>
-                  <span className="subnav-desc">Customize Your Own Style</span>
-                </div>
-              </button>
+              </div>
+            ))}
+            {/* Slide dots */}
+            <div className="hero-dots">
+              {[0,1,2].map(i => (
+                <button
+                  key={i}
+                  className={`hero-dot ${currentSlide === i ? 'active' : ''}`}
+                  onClick={() => setCurrentSlide(i)}
+                  aria-label={`Slide ${i+1}`}
+                />
+              ))}
+            </div>
+          </section>
 
-              <button 
-                className={`subnav-tab ${activeTab === 'apparel' ? 'active' : ''}`}
-                onClick={() => setActiveTab('apparel')}
-              >
-                <div className="subnav-icon-wrapper">
-                  <Shirt />
+          {/* Trust Badges Bar (Compact Row) */}
+          <div className="trust-badges-bar-compact">
+            <div className="container trust-badges-compact-grid">
+              <div className="trust-badge-compact-card">
+                <div className="trust-badge-compact-icon"><Percent /></div>
+                <div className="trust-badge-compact-info">
+                  <span className="trust-badge-compact-title">10% Cashback</span>
+                  <span className="trust-badge-compact-desc">on all App orders</span>
                 </div>
-                <div className="subnav-info">
-                  <span className="subnav-label">Embroidered Apparel</span>
-                  <span className="subnav-desc">Premium Quality Embroidery</span>
+              </div>
+              <div className="trust-badge-compact-card">
+                <div className="trust-badge-compact-icon"><RotateCcw /></div>
+                <div className="trust-badge-compact-info">
+                  <span className="trust-badge-compact-title">30 days Easy Returns</span>
+                  <span className="trust-badge-compact-desc">& Exchanges</span>
                 </div>
-              </button>
-
-              <button 
-                className={`subnav-tab ${activeTab === 'patches' ? 'active' : ''}`}
-                onClick={() => setActiveTab('patches')}
-              >
-                <div className="subnav-icon-wrapper">
-                  <FolderHeart />
+              </div>
+              <div className="trust-badge-compact-card">
+                <div className="trust-badge-compact-icon"><Truck /></div>
+                <div className="trust-badge-compact-info">
+                  <span className="trust-badge-compact-title">Free & Fast Shipping</span>
+                  <span className="trust-badge-compact-desc">Pan India Delivery</span>
                 </div>
-                <div className="subnav-info">
-                  <span className="subnav-label">Patches</span>
-                  <span className="subnav-desc">Premium Patches For Every Style</span>
-                </div>
-              </button>
+              </div>
             </div>
           </div>
 
-          {/* 4. Hero Section */}
-          <section className="hero-section">
-            <div className="hero-slider">
-              {heroSlides.map((slide, index) => (
-                <div key={index} className={`hero-slide ${currentSlide === index ? 'active' : ''}`}>
-                  <div className="hero-content">
-                    <span className="hero-tag">{slide.tag}</span>
-                    <h2 className="hero-title">{slide.title}</h2>
-                    <p className="hero-desc">{slide.desc}</p>
-                    <div className="hero-buttons">
-                      <button className="btn-solid-red" onClick={() => navigateToProduct(1)}>{slide.cta}</button>
-                      <button className="btn-outline-white" onClick={() => {
-                        const el = document.getElementById('customization-services');
-                        if (el) el.scrollIntoView({ behavior: 'smooth' });
-                      }}>{slide.secondaryCta}</button>
-                    </div>
+          {/* Categories Section */}
+          <section className="categories-section container reveal-section">
+            <h2 className="categories-main-title">CATEGORIES</h2>
+            <div className="categories-grid-new">
+              {[
+                { name: "Logo Embroidery", img: "https://images.unsplash.com/photo-1618354691373-d851c5c3a990?q=80&w=600&auto=format&fit=crop" },
+                { name: "Pet Embroidery", img: "https://images.unsplash.com/photo-1548199973-03cce0bbc87b?q=80&w=600&auto=format&fit=crop" },
+                { name: "Vehicle Embroidery", img: "https://images.unsplash.com/photo-1511919884226-fd3cad34687c?q=80&w=600&auto=format&fit=crop" },
+                { name: "Customize Embroidery", img: "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?q=80&w=600&auto=format&fit=crop" },
+                { name: "Portrait Embroidery", img: "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?q=80&w=600&auto=format&fit=crop" },
+                { name: "Artwork Embroidery", img: "https://images.unsplash.com/photo-1556821840-3a63f95609a7?q=80&w=600&auto=format&fit=crop" }
+              ].map((cat, i) => (
+                <div key={i} className="category-item-card-new">
+                  <div className="category-image-wrapper-new">
+                    <img src={cat.img} alt={cat.name} className="category-image-new" />
                   </div>
+                  <h4 className="category-item-title-new">{cat.name}</h4>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* Fresh Drops Section */}
+          <section className="fresh-drops-section container reveal-section">
+            <h2 className="section-title-new">Fresh Drops</h2>
+            <div className="fresh-drops-slider-container">
+              {[
+                {
+                  name: "Demon Mask Embroidered Oversized Tee",
+                  image: "/images/hero_banner.png",
+                  productId: 1
+                },
+                {
+                  name: "Chaos Anime Embroidered T-Shirt",
+                  image: "https://images.unsplash.com/photo-1578932750294-f5075e85f44a?q=80&w=1200&auto=format&fit=crop",
+                  productId: 2
+                },
+                {
+                  name: "Sakura Blossom Streetwear Sweatshirt",
+                  image: "https://images.unsplash.com/photo-1556821840-3a63f95609a7?q=80&w=1200&auto=format&fit=crop",
+                  productId: 12
+                }
+              ].map((slide, idx) => (
+                <div 
+                  key={idx} 
+                  className={`fresh-drops-slide ${freshDropsSlide === idx ? 'active' : ''}`}
+                  onClick={() => navigateToProduct(slide.productId)}
+                >
                   <div 
-                    className="hero-bg-image" 
+                    className="fresh-drops-image" 
                     style={{ backgroundImage: `url('${slide.image}')` }}
                   ></div>
+                  
+                  {/* Dots pagination instead of numbers */}
+                  <div className="fresh-drops-dots-overlay">
+                    {[0, 1, 2].map((dotIdx) => (
+                      <span 
+                        key={dotIdx} 
+                        className={`fresh-drops-dot ${freshDropsSlide === dotIdx ? 'active' : ''}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setFreshDropsSlide(dotIdx);
+                        }}
+                      />
+                    ))}
+                  </div>
                 </div>
               ))}
-            </div>
-
-            {/* Play trigger button */}
-            <button className="watch-craft-btn" aria-label="Watch the craft video">
-              <div className="watch-craft-play">
-                <Play />
-              </div>
-              <span className="watch-craft-text">Watch The Craft</span>
-            </button>
-
-            {/* Carousel indicator dots */}
-            <div className="hero-indicators">
-              {heroSlides.map((_, index) => (
-                <button 
-                  key={index} 
-                  className={`hero-indicator ${currentSlide === index ? 'active' : ''}`}
-                  onClick={() => setCurrentSlide(index)}
-                  aria-label={`Go to slide ${index + 1}`}
-                ></button>
-              ))}
+              
+              {/* Slider Control Arrows */}
+              <button 
+                className="slider-arrow-btn left"
+                onClick={(e) => { e.stopPropagation(); setFreshDropsSlide(prev => (prev - 1 + 3) % 3); }}
+                aria-label="Previous Slide"
+              >
+                &larr;
+              </button>
+              <button 
+                className="slider-arrow-btn right"
+                onClick={(e) => { e.stopPropagation(); setFreshDropsSlide(prev => (prev + 1) % 3); }}
+                aria-label="Next Slide"
+              >
+                &rarr;
+              </button>
             </div>
           </section>
 
-          {/* 5. Trust Badges Bar */}
-          <div className="trust-badges-bar">
-            <div className="container trust-badges-grid">
-              <div className="trust-badge-card">
-                <div className="trust-badge-icon"><Percent /></div>
-                <div className="trust-badge-info">
-                  <span className="trust-badge-title">10% Cashback</span>
-                  <span className="trust-badge-desc">on all App orders</span>
-                </div>
-              </div>
-              <div className="trust-badge-card">
-                <div className="trust-badge-icon"><RotateCcw /></div>
-                <div className="trust-badge-info">
-                  <span className="trust-badge-title">30 days Easy Returns</span>
-                  <span className="trust-badge-desc">& Exchanges</span>
-                </div>
-              </div>
-              <div className="trust-badge-card">
-                <div className="trust-badge-icon"><Truck /></div>
-                <div className="trust-badge-info">
-                  <span className="trust-badge-title">Free & Fast Shipping</span>
-                  <span className="trust-badge-desc">Pan India Delivery</span>
-                </div>
-              </div>
-              <div className="trust-badge-card">
-                <div className="trust-badge-icon"><ShieldCheck /></div>
-                <div className="trust-badge-info">
-                  <span className="trust-badge-title">Premium Quality</span>
-                  <span className="trust-badge-desc">Guaranteed Craftsmanship</span>
-                </div>
-              </div>
+          {/* New Arrivals Section */}
+          <section className="new-arrivals-section reveal-section">
+            <div className="container">
+              <h2 className="section-title-new">New Arrivals</h2>
             </div>
-          </div>
-
-          {/* 6. Main Category Showcase Grid */}
-          <section className="category-showcase container">
-            <div className="category-grid">
-              <div className="category-card">
+            
+            <div className="new-arrivals-carousel-outer">
+              <div className="new-arrivals-carousel-viewport">
                 <div 
-                  className="category-card-bg" 
-                  style={{ backgroundImage: `url('https://images.unsplash.com/photo-1605647540924-852290f6b0d5?q=80&w=600&auto=format&fit=crop')` }}
-                ></div>
-                <div className="category-card-overlay">
-                  <h3 className="category-card-title">Customize Your Style</h3>
-                  <a href="#customization-services" className="category-card-cta">
-                    Explore <ChevronRight />
-                  </a>
-                </div>
-              </div>
-              <div className="category-card">
-                <div 
-                  className="category-card-bg" 
-                  style={{ backgroundImage: `url('/images/products/demon_mask_tee.png')` }}
-                ></div>
-                <div className="category-card-overlay">
-                  <h3 className="category-card-title">Embroidered Apparel</h3>
-                  <a href="#best-sellers" className="category-card-cta">
-                    Explore <ChevronRight />
-                  </a>
-                </div>
-              </div>
-              <div className="category-card">
-                <div 
-                  className="category-card-bg" 
-                  style={{ backgroundImage: `url('https://images.unsplash.com/photo-1562157873-818bc0726f68?q=80&w=600&auto=format&fit=crop')` }}
-                ></div>
-                <div className="category-card-overlay">
-                  <h3 className="category-card-title">Patches & Accessories</h3>
-                  <a href="#best-sellers" className="category-card-cta">
-                    Explore <ChevronRight />
-                  </a>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* 7. Promo Banner (Fearless Collection) */}
-          <section className="promo-banner container">
-            <div className="promo-banner-card">
-              <div className="promo-banner-content">
-                <span className="promo-badge-red">Limited Drop</span>
-                <h3 className="promo-banner-title">Fearless Collection</h3>
-                <p className="promo-banner-desc">Bold designs. Unstoppable energy. Detailed heavyweight custom threadwork embroidery.</p>
-                <button className="btn-outline-white" onClick={() => navigateToProduct(1)}>Explore The Collection</button>
-              </div>
-              <div 
-                className="promo-banner-bg" 
-                style={{ backgroundImage: `url('https://images.unsplash.com/photo-1556821840-3a63f95609a7?q=80&w=1200&auto=format&fit=crop')` }}
-              ></div>
-              <div className="promo-drop-label">
-                <span className="promo-drop-tag">New Drop</span>
-                <div className="promo-drop-date">07.07.24</div>
-              </div>
-            </div>
-          </section>
-
-          {/* 8. Best Sellers Section */}
-          <section id="best-sellers" className="container" style={{ padding: '20px 0' }}>
-            <div className="section-header">
-              <h2 className="section-title">Best Sellers</h2>
-              <a href="#best-sellers" className="section-link" onClick={() => navigateToProduct(1)}>
-                View All <ChevronRight />
-              </a>
-            </div>
-
-            <div className="product-grid">
-              {products.map((product) => (
-                <div 
-                  key={product.id} 
-                  className="product-card" 
-                  onClick={() => navigateToProduct(product.id)}
+                  className="new-arrivals-carousel-track-pop"
+                  style={{ 
+                    '--active-index': newArrivalsIndex,
+                    ...(newArrivalsNoAnim ? { transition: 'none' } : {})
+                  }}
                 >
-                  <div className="product-card-img-wrapper">
-                    <img src={product.image} alt={product.name} className="product-card-image" />
-                    <button 
-                      className={`product-card-wishlist ${wishlist.includes(product.id) ? 'active' : ''}`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleWishlist(product.id);
-                      }}
-                      aria-label="Add to wishlist"
-                    >
-                      <Heart fill={wishlist.includes(product.id) ? 'currentColor' : 'none'} />
-                    </button>
-                    <span className="product-card-tag">{product.tag}</span>
-                  </div>
-                  <div className="product-card-info">
-                    <span className="product-card-category">{product.category}</span>
-                    <h4 className="product-card-title">{product.name}</h4>
-                    <span className="product-card-price">₹{product.price.toLocaleString('en-IN')}</span>
-                  </div>
+                  {[
+                    ...products.slice(0, 10), 
+                    ...products.slice(0, 10), 
+                    ...products.slice(0, 10)
+                  ].map((targetProduct, idx) => {
+                    const isActive = idx === newArrivalsIndex;
+                    return (
+                      <div 
+                        key={idx} 
+                        className={`new-arrival-item-card-pop ${isActive ? 'active' : ''}`}
+                        onClick={() => setNewArrivalsIndex(idx)}
+                      >
+                        <div className="new-arrival-image-wrapper">
+                          <img src={targetProduct.image} alt={targetProduct.name} className="new-arrival-image" />
+                          <span className="new-arrival-badge">{targetProduct.tag}</span>
+                        </div>
+                        <div className="new-arrival-details">
+                          <h4 className="new-arrival-name">{targetProduct.name}</h4>
+                          <span className="new-arrival-price">₹{targetProduct.price.toLocaleString('en-IN')}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
+              </div>
+
+              {/* Navigation Arrows */}
+              <button 
+                className="carousel-arrow-btn left" 
+                onClick={() => setNewArrivalsIndex(prev => prev - 1)}
+                aria-label="Previous product"
+              >
+                &larr;
+              </button>
+              <button 
+                className="carousel-arrow-btn right" 
+                onClick={() => setNewArrivalsIndex(prev => prev + 1)}
+                aria-label="Next product"
+              >
+                &rarr;
+              </button>
+            </div>
+
+            {/* Dot Pagination */}
+            <div className="new-arrivals-pagination-dots">
+              {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((dotIndex) => (
+                <button 
+                  key={dotIndex}
+                  className={`new-arrivals-pagination-dot ${((newArrivalsIndex % 10) + 10) % 10 === dotIndex ? 'active' : ''}`}
+                  onClick={() => setNewArrivalsIndex(10 + dotIndex)}
+                  aria-label={`Go to slide ${dotIndex + 1}`}
+                />
               ))}
             </div>
           </section>
 
-          {/* 9. Shop by Fit & Style */}
-          <section className="shop-fit-style container">
-            <div className="section-header">
-              <h2 className="section-title">Shop by Fit & Style</h2>
+          {/* Product Catalog tab section */}
+          <section className="catalog-section container reveal-section">
+            {/* Gender Tabs */}
+            <div className="catalog-gender-tabs">
+              {['ALL', 'MEN', 'WOMEN'].map((gender) => (
+                <button 
+                  key={gender} 
+                  className={`catalog-gender-tab ${activeGenderTab === gender ? 'active' : ''}`}
+                  onClick={() => { setActiveGenderTab(gender); }}
+                >
+                  {gender}
+                </button>
+              ))}
             </div>
 
-            <div className="fit-style-grid">
-              <div className="fit-style-card">
-                <div className="fit-style-icon"><Sparkles /></div>
-                <div className="fit-style-info">
-                  <h3 className="fit-style-title">Oversized T-Shirts</h3>
-                  <a href="#best-sellers" className="fit-style-cta">Shop Now <ArrowRight /></a>
-                </div>
-              </div>
-              <div className="fit-style-card">
-                <div className="fit-style-icon"><Shirt /></div>
-                <div className="fit-style-info">
-                  <h3 className="fit-style-title">Regular Fit T-Shirts</h3>
-                  <a href="#best-sellers" className="fit-style-cta">Shop Now <ArrowRight /></a>
-                </div>
-              </div>
-              <div className="fit-style-card">
-                <div className="fit-style-icon"><Compass /></div>
-                <div className="fit-style-info">
-                  <h3 className="fit-style-title">Shirts</h3>
-                  <a href="#best-sellers" className="fit-style-cta">Shop Now <ArrowRight /></a>
-                </div>
-              </div>
-              <div className="fit-style-card">
-                <div className="fit-style-icon"><Smile /></div>
-                <div className="fit-style-info">
-                  <h3 className="fit-style-title">Sweatshirts</h3>
-                  <a href="#best-sellers" className="fit-style-cta">Shop Now <ArrowRight /></a>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* 10. Custom Embroidery Services */}
-          <section id="customization-services" className="custom-services container">
-            <div className="section-header">
-              <h2 className="section-title">Custom Embroidery Services</h2>
+            {/* Sub-category Filter Pills */}
+            <div className="catalog-filter-pills">
+              {['ALL', 'TRENDING', 'NEW COLLECTIONS', 'OVERSIZED T-SHIRTS', 'REGULAR FIT T-SHIRTS', 'SHIRTS', 'SWEATSHIRTS', 'T-SHIRTS'].map((sub) => (
+                <button 
+                  key={sub} 
+                  className={`catalog-filter-pill ${activeSubCategory === sub ? 'active' : ''}`}
+                  onClick={() => { setActiveSubCategory(sub); }}
+                >
+                  {sub}
+                </button>
+              ))}
             </div>
 
-            <div className="services-grid">
-              <div className="service-card">
-                <div 
-                  className="service-card-bg" 
-                  style={{ backgroundImage: `url('https://images.unsplash.com/photo-1517841905240-472988babdf9?q=80&w=600&auto=format&fit=crop')` }}
-                ></div>
-                <div className="service-card-overlay"></div>
-                <div className="service-card-content">
-                  <div className="service-icon"><Scissors /></div>
-                  <h3 className="service-title">Logo Embroidery</h3>
-                  <a href="#customize-form" className="service-cta">Create Now <ArrowRight /></a>
-                </div>
-              </div>
-
-              <div className="service-card">
-                <div 
-                  className="service-card-bg" 
-                  style={{ backgroundImage: `url('https://images.unsplash.com/photo-1543466835-00a7907e9de1?q=80&w=600&auto=format&fit=crop')` }}
-                ></div>
-                <div className="service-card-overlay"></div>
-                <div className="service-card-content">
-                  <div className="service-icon"><Dog /></div>
-                  <h3 className="service-title">Pet Embroidery</h3>
-                  <a href="#customize-form" className="service-cta">Create Now <ArrowRight /></a>
-                </div>
-              </div>
-
-              <div className="service-card">
-                <div 
-                  className="service-card-bg" 
-                  style={{ backgroundImage: `url('https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=600&auto=format&fit=crop')` }}
-                ></div>
-                <div className="service-card-overlay"></div>
-                <div className="service-card-content">
-                  <div className="service-icon"><User /></div>
-                  <h3 className="service-title">Portrait Embroidery</h3>
-                  <a href="#customize-form" className="service-cta">Create Now <ArrowRight /></a>
-                </div>
-              </div>
-
-              <div className="service-card">
-                <div 
-                  className="service-card-bg" 
-                  style={{ backgroundImage: `url('https://images.unsplash.com/photo-1503376780353-7e6692767b70?q=80&w=600&auto=format&fit=crop')` }}
-                ></div>
-                <div className="service-card-overlay"></div>
-                <div className="service-card-content">
-                  <div className="service-icon"><Car /></div>
-                  <h3 className="service-title">Vehicle Embroidery</h3>
-                  <a href="#customize-form" className="service-cta">Create Now <ArrowRight /></a>
-                </div>
-              </div>
+            {/* Product Grid - Key bound to filters to trigger smooth entry animations */}
+            <div className="product-grid" key={`${activeGenderTab}-${activeSubCategory}`}>
+              {products
+                .filter(p => {
+                  const matchesGender = activeGenderTab === 'ALL' || p.gender === activeGenderTab || p.gender === 'UNISEX';
+                  const matchesSub = activeSubCategory === 'ALL' || p.subCategories.includes(activeSubCategory);
+                  return matchesGender && matchesSub;
+                })
+                .map((product) => (
+                  <div 
+                    key={product.id} 
+                    className="product-card" 
+                    onClick={() => navigateToProduct(product.id)}
+                  >
+                    <div className="product-card-img-wrapper">
+                      <img src={product.image} alt={product.name} className="product-card-image" />
+                      <button 
+                        className={`product-card-wishlist ${wishlist.includes(product.id) ? 'active' : ''}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleWishlist(product.id);
+                        }}
+                        aria-label="Add to wishlist"
+                      >
+                        <Heart fill={wishlist.includes(product.id) ? 'currentColor' : 'none'} />
+                      </button>
+                      <span className="product-card-tag">{product.tag}</span>
+                    </div>
+                    <div className="product-card-info">
+                      <span className="product-card-category">{product.category}</span>
+                      <h4 className="product-card-title">{product.name}</h4>
+                      <div className="product-price-layout">
+                        {product.originalPrice ? (
+                          <div className="product-price-discount-box">
+                            <span className="price-original">₹{product.originalPrice.toLocaleString('en-IN')}</span>
+                            <span className="price-sale">₹{product.price.toLocaleString('en-IN')}</span>
+                            <span className="price-discount-percent">{Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}% OFF</span>
+                          </div>
+                        ) : (
+                          <span className="price-sale-only">₹{product.price.toLocaleString('en-IN')}</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
             </div>
           </section>
 
-          {/* 11. How It Works Section */}
-          <section className="how-it-works">
+          {/* How It Works Section */}
+          <section className="how-it-works reveal-section" style={{ paddingTop: '40px' }}>
             <div className="container">
               <div className="section-header" style={{ justifyContent: 'center', marginBottom: '50px' }}>
                 <h2 className="section-title">How It Works</h2>
@@ -698,27 +929,31 @@ export default function App() {
             </div>
           </section>
 
-          {/* 12. Instagram Showcase */}
-          <section className="instagram-section container">
+          {/* Instagram Showcase */}
+          <section className="instagram-section container reveal-section">
             <div className="insta-header">
               <h2 className="section-title">Follow @Indiuna</h2>
               <p className="insta-subtitle">For Daily Style Inspo</p>
             </div>
 
+            {/* Symmetrical Polaroidsnapshot Collage Grid (6 Items) */}
             <div className="insta-grid">
               {[
-                "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?q=80&w=400&auto=format&fit=crop",
-                "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?q=80&w=400&auto=format&fit=crop",
-                "https://images.unsplash.com/photo-1549298916-b41d501d3772?q=80&w=400&auto=format&fit=crop",
-                "https://images.unsplash.com/photo-1529139574466-a303027c1d8b?q=80&w=400&auto=format&fit=crop",
-                "https://images.unsplash.com/photo-1509631179647-0177331693ae?q=80&w=400&auto=format&fit=crop",
-                "https://images.unsplash.com/photo-1483985988355-763728e1935b?q=80&w=400&auto=format&fit=crop"
-              ].map((url, i) => (
-                <div className="insta-item" key={i}>
-                  <img src={url} alt={`Insta style ${i+1}`} className="insta-item-img" />
-                  <div className="insta-overlay">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="20" x="2" y="2" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/></svg>
+                { url: "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?q=80&w=600&auto=format&fit=crop", tag: "#INDIUNA" },
+                { url: "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?q=80&w=600&auto=format&fit=crop", tag: "#STREETWEAR" },
+                { url: "https://images.unsplash.com/photo-1549298916-b41d501d3772?q=80&w=600&auto=format&fit=crop", tag: "#EMBROIDERY" },
+                { url: "https://images.unsplash.com/photo-1529139574466-a303027c1d8b?q=80&w=600&auto=format&fit=crop", tag: "#CHAOS" },
+                { url: "https://images.unsplash.com/photo-1509631179647-0177331693ae?q=80&w=600&auto=format&fit=crop", tag: "#OVERSIZED" },
+                { url: "https://images.unsplash.com/photo-1483985988355-763728e1935b?q=80&w=600&auto=format&fit=crop", tag: "#STYLE" }
+              ].map((item, i) => (
+                <div className="insta-item polaroid-card" key={i}>
+                  <div className="polaroid-img-frame">
+                    <img src={item.url} alt={`Insta style ${i+1}`} className="insta-item-img" />
+                    <div className="insta-overlay">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="20" x="2" y="2" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/></svg>
+                    </div>
                   </div>
+                  <span className="polaroid-caption">{item.tag}</span>
                 </div>
               ))}
             </div>
@@ -827,6 +1062,12 @@ export default function App() {
 
         <div className="container footer-bottom">
           <span>&copy; {new Date().getFullYear()} INDIUNA. All Rights Reserved.</span>
+          <span className="footer-dev-credit">
+            Developed by{' '}
+            <a href="https://qubnixtechnology.com/" target="_blank" rel="noopener noreferrer" className="footer-dev-link">
+              Qubnix Technology
+            </a>
+          </span>
           <div className="footer-bottom-links">
             <a href="#terms">Terms &amp; Conditions</a>
             <a href="#privacy">Privacy Policy</a>
