@@ -558,6 +558,51 @@ export default function App() {
       </header>
 
       {/* 3. Render Views dynamically */}
+      
+      {/* Premium Top Navigation Cards (Above Hero Banner on Home/Landing Pages) */}
+      {['home', 'customization', 'embroidered', 'patches'].includes(currentView) && (
+        <section className="top-nav-cards-section container">
+          <div className="top-nav-cards-grid">
+            <div 
+              className={`top-nav-card ${currentView === 'home' ? 'active' : ''} home-btn-pill`}
+              onClick={() => { setCurrentView('home'); scrollToTop(); }}
+            >
+              <span className="top-nav-card-title">Home</span>
+            </div>
+            <div 
+              className={`top-nav-card ${currentView === 'customization' ? 'active' : ''}`}
+              onClick={() => { setCurrentView('customization'); scrollToTop(); }}
+            >
+              <div className="top-nav-card-icon"><Scissors size={18} /></div>
+              <div className="top-nav-card-info">
+                <span className="top-nav-card-title">Customization</span>
+                <span className="top-nav-card-subtitle">Your Design, Stitched</span>
+              </div>
+            </div>
+            <div 
+              className={`top-nav-card ${currentView === 'embroidered' ? 'active' : ''}`}
+              onClick={() => { setCurrentView('embroidered'); scrollToTop(); }}
+            >
+              <div className="top-nav-card-icon"><Shirt size={18} /></div>
+              <div className="top-nav-card-info">
+                <span className="top-nav-card-title">Embroidered Apparel</span>
+                <span className="top-nav-card-subtitle">Premium Stitched Streetwear</span>
+              </div>
+            </div>
+            <div 
+              className={`top-nav-card ${currentView === 'patches' ? 'active' : ''}`}
+              onClick={() => { setCurrentView('patches'); scrollToTop(); }}
+            >
+              <div className="top-nav-card-icon"><FolderHeart size={18} /></div>
+              <div className="top-nav-card-info">
+                <span className="top-nav-card-title">Patches</span>
+                <span className="top-nav-card-subtitle">Collectible Art Patches</span>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
       {currentView === 'home' ? (
         <>
           {/* Hero Banner — 3 auto-sliding images */}
@@ -963,6 +1008,30 @@ export default function App() {
             </a>
           </section>
         </>
+      ) : currentView === 'customization' ? (
+        <CustomizationLandingPage 
+          products={products}
+          wishlist={wishlist}
+          toggleWishlist={toggleWishlist}
+          onNavigateProduct={navigateToProduct}
+          onGoHome={() => { setCurrentView('home'); scrollToTop(); }}
+        />
+      ) : currentView === 'embroidered' ? (
+        <EmbroideredLandingPage 
+          products={products}
+          wishlist={wishlist}
+          toggleWishlist={toggleWishlist}
+          onNavigateProduct={navigateToProduct}
+          onGoHome={() => { setCurrentView('home'); scrollToTop(); }}
+        />
+      ) : currentView === 'patches' ? (
+        <PatchesLandingPage 
+          products={products}
+          wishlist={wishlist}
+          toggleWishlist={toggleWishlist}
+          onNavigateProduct={navigateToProduct}
+          onGoHome={() => { setCurrentView('home'); scrollToTop(); }}
+        />
       ) : (
         /* DEDICATED PRODUCT VIEW PAGE */
         <ProductDetailPage 
@@ -1522,6 +1591,392 @@ function ProductDetailPage({
           ))}
         </div>
       </section>
+    </div>
+  );
+}
+
+/* ==========================================================================
+   SHARED LANDING PAGE HERO COMPONENT
+   ========================================================================== */
+function LandingPageHero({ tag, title, desc, image, ctaText, onGoHome }) {
+  return (
+    <section className="landing-hero-section">
+      <div className="landing-hero-bg" style={{ backgroundImage: `url('${image}')` }} />
+      <div className="landing-hero-overlay" />
+      <div className="landing-hero-content container">
+        {onGoHome && (
+          <button className="landing-hero-home-btn" onClick={onGoHome}>
+            &larr; Back to Home
+          </button>
+        )}
+        <span className="landing-hero-tag" style={{ marginTop: onGoHome ? '10px' : '0' }}>{tag}</span>
+        <h1 className="landing-hero-title">{title}</h1>
+        <p className="landing-hero-desc">{desc}</p>
+        <button className="landing-hero-cta">{ctaText}</button>
+      </div>
+    </section>
+  );
+}
+
+/* ==========================================================================
+   SHARED CATEGORIES GRID COMPONENT
+   ========================================================================== */
+function LandingCategories({ categories }) {
+  return (
+    <section className="categories-section container">
+      <h2 className="categories-main-title">Categories</h2>
+      <div className="categories-grid-new">
+        {categories.map((cat, i) => (
+          <div key={i} className="category-item-card-new">
+            <div className="category-image-wrapper-new">
+              <img src={cat.img} alt={cat.name} className="category-image-new" />
+            </div>
+            <h4 className="category-item-title-new">{cat.name}</h4>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/* ==========================================================================
+   SHARED TRENDING / NEW ARRIVALS GRID COMPONENT
+   ========================================================================== */
+/* ==========================================================================
+   SHARED TRENDING / NEW ARRIVALS CAROUSEL COMPONENT (HOMEPAGE DESIGN MATCH)
+   ========================================================================== */
+function LandingProductGrid({ title, products, onNavigateProduct }) {
+  const [carouselIndex, setCarouselIndex] = useState(10);
+  const [noAnim, setNoAnim] = useState(false);
+
+  // Auto-play landing page carousels
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCarouselIndex((prev) => prev + 1);
+    }, 4500);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Infinite reset loop
+  useEffect(() => {
+    if (carouselIndex >= 20) {
+      const t = setTimeout(() => {
+        setNoAnim(true);
+        setCarouselIndex(carouselIndex - 10);
+        requestAnimationFrame(() => requestAnimationFrame(() => setNoAnim(false)));
+      }, 700);
+      return () => clearTimeout(t);
+    } else if (carouselIndex <= 9) {
+      const t = setTimeout(() => {
+        setNoAnim(true);
+        setCarouselIndex(carouselIndex + 10);
+        requestAnimationFrame(() => requestAnimationFrame(() => setNoAnim(false)));
+      }, 700);
+      return () => clearTimeout(t);
+    }
+  }, [carouselIndex]);
+
+  // Pad the products array so it always has at least 10 items for the infinite carousel layout
+  const paddedProducts = [...products];
+  while (paddedProducts.length < 10 && paddedProducts.length > 0) {
+    paddedProducts.push(...products);
+  }
+  const sliceProducts = paddedProducts.slice(0, 10);
+
+  // Triple the items to support infinite scroll smoothly
+  const tripledProducts = [
+    ...sliceProducts,
+    ...sliceProducts,
+    ...sliceProducts
+  ];
+
+  return (
+    <section className="new-arrivals-section reveal-section reveal-active" style={{ background: 'transparent', border: 'none', paddingTop: '40px', paddingBottom: '40px' }}>
+      <div className="container">
+        <h2 className="section-title-new" style={{ textAlign: 'center', marginBottom: '10px' }}>{title}</h2>
+      </div>
+      
+      <div className="new-arrivals-carousel-outer">
+        <div className="new-arrivals-carousel-viewport">
+          <div 
+            className="new-arrivals-carousel-track-pop"
+            style={{ 
+              '--active-index': carouselIndex,
+              ...(noAnim ? { transition: 'none' } : {})
+            }}
+          >
+            {tripledProducts.map((targetProduct, idx) => {
+              const isActive = idx === carouselIndex;
+              return (
+                <div 
+                  key={idx} 
+                  className={`new-arrival-item-card-pop ${isActive ? 'active' : ''}`}
+                  onClick={() => {
+                    if (isActive) {
+                      onNavigateProduct(targetProduct.id);
+                    } else {
+                      setCarouselIndex(idx);
+                    }
+                  }}
+                >
+                  <div className="new-arrival-image-wrapper">
+                    <img src={targetProduct.image} alt={targetProduct.name} className="new-arrival-image" />
+                    <span className="new-arrival-badge">{targetProduct.tag}</span>
+                  </div>
+                  <div className="new-arrival-details">
+                    <h4 className="new-arrival-name">{targetProduct.name}</h4>
+                    <span className="new-arrival-price">₹{targetProduct.price.toLocaleString('en-IN')}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Navigation Arrows */}
+        <button 
+          className="carousel-arrow-btn left" 
+          onClick={() => setCarouselIndex(prev => prev - 1)}
+          aria-label="Previous product"
+        >
+          &larr;
+        </button>
+        <button 
+          className="carousel-arrow-btn right" 
+          onClick={() => setCarouselIndex(prev => prev + 1)}
+          aria-label="Next product"
+        >
+          &rarr;
+        </button>
+      </div>
+
+      {/* Dot Pagination */}
+      <div className="new-arrivals-pagination-dots">
+        {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((dotIndex) => (
+          <button 
+            key={dotIndex}
+            className={`new-arrivals-pagination-dot ${((carouselIndex % 10) + 10) % 10 === dotIndex ? 'active' : ''}`}
+            onClick={() => setCarouselIndex(10 + dotIndex)}
+            aria-label={`Go to slide ${dotIndex + 1}`}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/* ==========================================================================
+   SHARED FILTERABLE PRODUCT SECTION
+   ========================================================================== */
+function FilterableProductsBlock({ products, wishlist, toggleWishlist, onNavigateProduct }) {
+  const [activeTab, setActiveTab] = useState('All');
+
+  const tabs = [
+    { label: 'All', value: 'All' },
+    { label: 'Regular Fit', value: 'Regular Fit T-Shirts' },
+    { label: 'Polo', value: 'Polo' },
+    { label: 'Oversized T-Shirt', value: 'Oversized T-Shirts' },
+    { label: 'Sweatshirt', value: 'Sweatshirts' },
+    { label: 'Hoodie', value: 'Hoodies' }
+  ];
+
+  const filteredProducts = products.filter(p => {
+    // Filter to Unisex focus and categories matches tabs
+    if (activeTab === 'All') {
+      return true; // we show all unisex products or similar
+    }
+    return p.category === activeTab;
+  });
+
+  return (
+    <section className="catalog-section container">
+      <h2 className="section-title-new">Unisex Products</h2>
+      
+      {/* Category Tabs */}
+      <div className="catalog-filter-pills" style={{ marginBottom: '35px' }}>
+        {tabs.map((tab) => (
+          <button 
+            key={tab.value} 
+            className={`catalog-filter-pill ${activeTab === tab.value ? 'active' : ''}`}
+            onClick={() => setActiveTab(tab.value)}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Grid */}
+      <div className="product-grid" key={activeTab}>
+        {filteredProducts.length > 0 ? (
+          filteredProducts.map((product) => (
+            <div 
+              key={product.id} 
+              className="product-card" 
+              onClick={() => onNavigateProduct(product.id)}
+            >
+              <div className="product-card-img-wrapper">
+                <img src={product.image} alt={product.name} className="product-card-image" />
+                <button 
+                  className={`product-card-wishlist ${wishlist.includes(product.id) ? 'active' : ''}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleWishlist(product.id);
+                  }}
+                  aria-label="Add to wishlist"
+                >
+                  <Heart fill={wishlist.includes(product.id) ? 'currentColor' : 'none'} />
+                </button>
+                <span className="product-card-tag">{product.tag}</span>
+              </div>
+              <div className="product-card-info">
+                <span className="product-card-category">{product.category}</span>
+                <h4 className="product-card-title">{product.name}</h4>
+                <div className="product-price-layout">
+                  {product.originalPrice ? (
+                    <div className="product-price-discount-box">
+                      <span className="price-original">₹{product.originalPrice.toLocaleString('en-IN')}</span>
+                      <span className="price-sale">₹{product.price.toLocaleString('en-IN')}</span>
+                      <span className="price-discount-percent">{Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}% OFF</span>
+                    </div>
+                  ) : (
+                    <span className="price-sale-only">₹{product.price.toLocaleString('en-IN')}</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))
+        ) : (
+          <div className="no-products-msg">No products found in this category.</div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+/* ==========================================================================
+   1. CUSTOMIZATION LANDING PAGE
+   ========================================================================== */
+function CustomizationLandingPage({ products, wishlist, toggleWishlist, onNavigateProduct, onGoHome }) {
+  const categories = [
+    { name: "Logo Embroidery", img: "https://images.unsplash.com/photo-1618354691373-d851c5c3a990?q=80&w=600&auto=format&fit=crop" },
+    { name: "Customize Embroidery", img: "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?q=80&w=600&auto=format&fit=crop" },
+    { name: "Portrait Embroidery", img: "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?q=80&w=600&auto=format&fit=crop" }
+  ];
+
+  const trendingProducts = products.slice(0, 4);
+
+  return (
+    <div className="landing-page animate-fade-in">
+      <LandingPageHero 
+        tag="Custom Customs"
+        title="Your design, our premium craftsmanship."
+        desc="Upload custom logos, sketches or text, and our embroidery specialists will recreate them on high-weight cotton styles."
+        image="https://images.unsplash.com/photo-1605647540924-852290f6b0d5?q=80&w=1200&auto=format&fit=crop"
+        ctaText="Start Customizing"
+        onGoHome={onGoHome}
+      />
+      <LandingCategories categories={categories} />
+      <LandingProductGrid 
+        title="Trending Now" 
+        products={trendingProducts}
+        onNavigateProduct={onNavigateProduct}
+      />
+      <FilterableProductsBlock 
+        products={products}
+        wishlist={wishlist}
+        toggleWishlist={toggleWishlist}
+        onNavigateProduct={onNavigateProduct}
+      />
+    </div>
+  );
+}
+
+/* ==========================================================================
+   2. EMBROIDERED APPAREL LANDING PAGE
+   ========================================================================== */
+function EmbroideredLandingPage({ products, wishlist, toggleWishlist, onNavigateProduct, onGoHome }) {
+  const categories = [
+    { name: "Streetwear Embroidery", img: "/images/products/demon_mask_tee.png" },
+    { name: "Artwork Embroidery", img: "https://images.unsplash.com/photo-1556821840-3a63f95609a7?q=80&w=600&auto=format&fit=crop" },
+    { name: "Anime Embroidery", img: "/images/products/chaos_anime_tee.png" }
+  ];
+
+  const newArrivals = products.slice(2, 6);
+
+  return (
+    <div className="landing-page animate-fade-in">
+      <LandingPageHero 
+        tag="Premium Embroidered"
+        title="Heavyweight fabrics, high-density stitches."
+        desc="Explore our collection of custom anime graphics, cyberpunk typography, and classic streetwear art embroidered to perfection."
+        image="/images/hero_banner.png"
+        ctaText="Shop New Collection"
+        onGoHome={onGoHome}
+      />
+      <LandingCategories categories={categories} />
+
+      {/* Campaign Section */}
+      <section className="campaign-banner-section container">
+        <div className="campaign-banner-card">
+          <div className="campaign-banner-content">
+            <span className="campaign-badge-red">CAMPAIGN 2026</span>
+            <h2 className="campaign-banner-title">Fearless Stitches</h2>
+            <p className="campaign-banner-desc">Built for durability, designed to stand out. Our latest collection challenges standard embroidery styles with thick, multi-layered 3D stitches.</p>
+            <button className="btn-solid-red">Explore Campaign</button>
+          </div>
+          <div className="campaign-banner-bg" style={{ backgroundImage: `url('https://images.unsplash.com/photo-1578932750294-f5075e85f44a?q=80&w=1000&auto=format&fit=crop')` }} />
+        </div>
+      </section>
+
+      <LandingProductGrid 
+        title="New Arrivals" 
+        products={newArrivals}
+        onNavigateProduct={onNavigateProduct}
+      />
+      <FilterableProductsBlock 
+        products={products}
+        wishlist={wishlist}
+        toggleWishlist={toggleWishlist}
+        onNavigateProduct={onNavigateProduct}
+      />
+    </div>
+  );
+}
+
+/* ==========================================================================
+   3. PATCHES LANDING PAGE
+   ========================================================================== */
+function PatchesLandingPage({ products, wishlist, toggleWishlist, onNavigateProduct, onGoHome }) {
+  const categories = [
+    { name: "Velcro Patches", img: "https://images.unsplash.com/photo-1549298916-b41d501d3772?q=80&w=600&auto=format&fit=crop" },
+    { name: "Iron-On Patches", img: "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?q=80&w=600&auto=format&fit=crop" },
+    { name: "Sew-On Patches", img: "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?q=80&w=600&auto=format&fit=crop" }
+  ];
+
+  const trendingPatches = products.slice(1, 5);
+
+  return (
+    <div className="landing-page animate-fade-in">
+      <LandingPageHero 
+        tag="Premium Stitched Patches"
+        title="Personalize anything instantly."
+        desc="High-density collectible thread art patches with premium merrowed borders. Designed to be sewn or ironed onto bags, jackets, or denim."
+        image="https://images.unsplash.com/photo-1578932750294-f5075e85f44a?q=80&w=1200&auto=format&fit=crop"
+        ctaText="View All Patches"
+        onGoHome={onGoHome}
+      />
+      <LandingCategories categories={categories} />
+      <LandingProductGrid 
+        title="Trending Now" 
+        products={trendingPatches}
+        onNavigateProduct={onNavigateProduct}
+      />
+      <FilterableProductsBlock 
+        products={products}
+        wishlist={wishlist}
+        toggleWishlist={toggleWishlist}
+        onNavigateProduct={onNavigateProduct}
+      />
     </div>
   );
 }
