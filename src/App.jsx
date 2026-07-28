@@ -559,49 +559,40 @@ export default function App() {
 
       {/* 3. Render Views dynamically */}
       
-      {/* Premium Top Navigation Cards (Above Hero Banner on Home/Landing Pages) */}
+      {/* Sleek Sub-Navbar Navigation Tabs */}
       {['home', 'customization', 'embroidered', 'patches'].includes(currentView) && (
-        <section className="top-nav-cards-section container">
-          <div className="top-nav-cards-grid">
-            <div 
-              className={`top-nav-card ${currentView === 'home' ? 'active' : ''} home-btn-pill`}
+        <nav className="sub-navbar">
+          <div className="container sub-navbar-container">
+            <button 
+              className={`sub-navbar-tab ${currentView === 'home' ? 'active' : ''}`}
               onClick={() => { setCurrentView('home'); scrollToTop(); }}
             >
-              <span className="top-nav-card-title">Home</span>
-            </div>
-            <div 
-              className={`top-nav-card ${currentView === 'customization' ? 'active' : ''}`}
+              HOME
+            </button>
+            <span className="sub-navbar-divider">|</span>
+            <button 
+              className={`sub-navbar-tab ${currentView === 'customization' ? 'active' : ''}`}
               onClick={() => { setCurrentView('customization'); scrollToTop(); }}
             >
-              <div className="top-nav-card-icon"><Scissors size={18} /></div>
-              <div className="top-nav-card-info">
-                <span className="top-nav-card-title">Customization</span>
-                <span className="top-nav-card-subtitle">Your Design, Stitched</span>
-              </div>
-            </div>
-            <div 
-              className={`top-nav-card ${currentView === 'embroidered' ? 'active' : ''}`}
+              CUSTOMIZATION
+            </button>
+            <span className="sub-navbar-divider">|</span>
+            <button 
+              className={`sub-navbar-tab ${currentView === 'embroidered' ? 'active' : ''}`}
               onClick={() => { setCurrentView('embroidered'); scrollToTop(); }}
             >
-              <div className="top-nav-card-icon"><Shirt size={18} /></div>
-              <div className="top-nav-card-info">
-                <span className="top-nav-card-title">Embroidered Apparel</span>
-                <span className="top-nav-card-subtitle">Premium Stitched Streetwear</span>
-              </div>
-            </div>
-            <div 
-              className={`top-nav-card ${currentView === 'patches' ? 'active' : ''}`}
+              EMBROIDERED APPAREL
+            </button>
+            <span className="sub-navbar-divider">|</span>
+            <button 
+              className={`sub-navbar-tab ${currentView === 'patches' ? 'active' : ''}`}
               onClick={() => { setCurrentView('patches'); scrollToTop(); }}
             >
-              <div className="top-nav-card-icon"><FolderHeart size={18} /></div>
-              <div className="top-nav-card-info">
-                <span className="top-nav-card-title">Patches</span>
-                <span className="top-nav-card-subtitle">Collectible Art Patches</span>
-              </div>
-            </div>
+              PATCHES
+            </button>
           </div>
-        </section>
-      )}
+        </nav>
+      ) /* Premium Top Navigation Cards removed in favor of sleek tabs */}
 
       {currentView === 'home' ? (
         <>
@@ -661,31 +652,33 @@ export default function App() {
           </section>
 
           {/* Trust Badges Bar (Compact Row) */}
-          <div className="trust-badges-bar-compact">
-            <div className="container trust-badges-compact-grid">
-              <div className="trust-badge-compact-card">
-                <div className="trust-badge-compact-icon"><Percent /></div>
-                <div className="trust-badge-compact-info">
-                  <span className="trust-badge-compact-title">10% Cashback</span>
-                  <span className="trust-badge-compact-desc">on all App orders</span>
+          <section className="trust-badges-bar-section container">
+            <div className="trust-badges-bar-compact">
+              <div className="trust-badges-compact-grid">
+                <div className="trust-badge-compact-card">
+                  <div className="trust-badge-compact-icon"><Percent /></div>
+                  <div className="trust-badge-compact-info">
+                    <span className="trust-badge-compact-title">10% Cashback</span>
+                    <span className="trust-badge-compact-desc">on all App orders</span>
+                  </div>
                 </div>
-              </div>
-              <div className="trust-badge-compact-card">
-                <div className="trust-badge-compact-icon"><RotateCcw /></div>
-                <div className="trust-badge-compact-info">
-                  <span className="trust-badge-compact-title">30 days Easy Returns</span>
-                  <span className="trust-badge-compact-desc">& Exchanges</span>
+                <div className="trust-badge-compact-card">
+                  <div className="trust-badge-compact-icon"><RotateCcw /></div>
+                  <div className="trust-badge-compact-info">
+                    <span className="trust-badge-compact-title">30 days Easy Returns</span>
+                    <span className="trust-badge-compact-desc">&amp; Exchanges</span>
+                  </div>
                 </div>
-              </div>
-              <div className="trust-badge-compact-card">
-                <div className="trust-badge-compact-icon"><Truck /></div>
-                <div className="trust-badge-compact-info">
-                  <span className="trust-badge-compact-title">Free & Fast Shipping</span>
-                  <span className="trust-badge-compact-desc">Pan India Delivery</span>
+                <div className="trust-badge-compact-card">
+                  <div className="trust-badge-compact-icon"><Truck /></div>
+                  <div className="trust-badge-compact-info">
+                    <span className="trust-badge-compact-title">Free &amp; Fast Shipping</span>
+                    <span className="trust-badge-compact-desc">Pan India Delivery</span>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          </section>
 
           {/* Categories Section */}
           <section className="categories-section container reveal-section">
@@ -799,7 +792,7 @@ export default function App() {
                       <div 
                         key={idx} 
                         className={`new-arrival-item-card-pop ${isActive ? 'active' : ''}`}
-                        onClick={() => setNewArrivalsIndex(idx)}
+                        onClick={() => navigateToProduct(targetProduct.id)}
                       >
                         <div className="new-arrival-image-wrapper">
                           <img src={targetProduct.image} alt={targetProduct.name} className="new-arrival-image" />
@@ -1711,13 +1704,7 @@ function LandingProductGrid({ title, products, onNavigateProduct }) {
                 <div 
                   key={idx} 
                   className={`new-arrival-item-card-pop ${isActive ? 'active' : ''}`}
-                  onClick={() => {
-                    if (isActive) {
-                      onNavigateProduct(targetProduct.id);
-                    } else {
-                      setCarouselIndex(idx);
-                    }
-                  }}
+                  onClick={() => onNavigateProduct(targetProduct.id)}
                 >
                   <div className="new-arrival-image-wrapper">
                     <img src={targetProduct.image} alt={targetProduct.name} className="new-arrival-image" />
@@ -1790,7 +1777,7 @@ function FilterableProductsBlock({ products, wishlist, toggleWishlist, onNavigat
 
   return (
     <section className="catalog-section container">
-      <h2 className="section-title-new">Unisex Products</h2>
+      <h2 className="section-title-new" style={{ textAlign: 'center' }}>Unisex Products</h2>
       
       {/* Category Tabs */}
       <div className="catalog-filter-pills" style={{ marginBottom: '35px' }}>
