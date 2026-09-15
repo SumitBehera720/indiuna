@@ -5290,19 +5290,12 @@ function FilterableProductsBlock({
     setSelectedSubCategoryId('ALL');
   }, [activeTab]);
 
-  const activeParentCat = dbCategories.find(c => String(c.id) === String(activeTab) || c.name.toUpperCase() === String(activeTab).toUpperCase());
-  const childCats = activeParentCat 
-    ? dbCategories.filter(c => c.is_active && c.parent_id === activeParentCat.id) 
-    : [];
-
-  const fallbackChildCats = [
-    { id: 'Oversized T-Shirts', name: 'Oversized T-Shirt' },
-    { id: 'Regular Fit T-Shirts', name: 'Regular Fit' },
-    { id: 'Sweatshirts', name: 'Sweatshirts' },
-    { id: 'Hoodies', name: 'Hoodies' }
+  const displayChildCats = [
+    { id: 'Oversized T-Shirts', name: 'OVERSIZED T-SHIRT' },
+    { id: 'Regular Fit T-Shirts', name: 'REGULAR FIT' },
+    { id: 'Sweatshirts', name: 'SWEATSHIRTS' },
+    { id: 'Hoodies', name: 'HOODIES' }
   ];
-  
-  const displayChildCats = childCats.length > 0 ? childCats : fallbackChildCats;
 
   const rootOnlyNames = ['CUSTOMIZATION', 'EMBROIDERED APPAREL'];
 
