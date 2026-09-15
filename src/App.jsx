@@ -106,6 +106,22 @@ const isProductOutOfStock = (product) => {
   return false;
 };
 
+const filterCategoryList = (cats, pageType, rootNames, keywords) => {
+  const parentRoot = (cats || []).find(p => rootNames.includes((p.name || '').trim().toUpperCase()));
+  return (cats || []).filter(c => {
+    if (c.is_active === false || String(c.is_active) !== '0') return false;
+    const nameUpper = (c.name || '').trim().toUpperCase();
+    if (rootNames.includes(nameUpper)) return false;
+
+    const pages = (c.show_in_pages || '').split(',').map(s => s.trim().toLowerCase());
+    const matchesPage = pages.includes(pageType.toLowerCase());
+    const matchesName = keywords.some(kw => nameUpper.includes(kw));
+    const matchesParent = parentRoot && String(c.parent_id) === String(parentRoot.id);
+
+    return matchesPage || matchesName || matchesParent;
+  });
+};
+
 const matchProductFitOrTag = (p, filterValue) => {
   if (!filterValue || filterValue === 'ALL') return true;
 
@@ -1077,9 +1093,10 @@ export default function App() {
   // Categories Data
   const [dbCategories, setDbCategories] = useState([]);
   const [openMobileDropdown, setOpenMobileDropdown] = useState(null); // 'customization' | 'embroidered' | 'patches' | null
-  const customizationCats = dbCategories.filter(c => c.is_active && c.show_in_pages?.split(',').map(s => s.trim()).includes('customization'));
-  const embroideredCats = dbCategories.filter(c => c.is_active && c.show_in_pages?.split(',').map(s => s.trim()).includes('embroidered'));
-  const patchesCats = dbCategories.filter(c => c.is_active && c.show_in_pages?.split(',').map(s => s.trim()).includes('patches'));
+
+  const customizationCats = filterCategoryList(dbCategories, 'customization', ['CUSTOMIZATION', 'CUSTOM', 'CUSTOM APPAREL'], ['CUSTOM', 'CUSTOMIZ']);
+  const embroideredCats = filterCategoryList(dbCategories, 'embroidered', ['EMBROIDERED APPAREL', 'EMBROIDERED'], ['EMBROIDER', 'STITCH']);
+  const patchesCats = filterCategoryList(dbCategories, 'patches', ['PATCHES', 'PATCH'], ['PATCH', 'PATCHES']);
 
   // Products Data
   const [products, setProducts] = useState([
@@ -5825,12 +5842,7 @@ function WishlistPage({
    1. CUSTOMIZATION LANDING PAGE
    ========================================================================== */
 function CustomizationLandingPage({ products, wishlist, toggleWishlist, onNavigateProduct, onGoHome, dbCategories = [], dbBanners = [], onCategoryClick, activeCategory = 'All', setActiveCategory }) {
-  const customizationCats = dbCategories.filter(c => {
-    const nameUpper = (c.name || '').trim().toUpperCase();
-    const isRootName = ['CUSTOMIZATION', 'CUSTOM', 'CUSTOM APPAREL'].includes(nameUpper);
-    const isTargetPage = (!c.show_in_pages || c.show_in_pages.split(',').map(s => s.trim()).includes('customization'));
-    return c.is_active !== false && String(c.is_active) !== '0' && !isRootName && isTargetPage;
-  });
+  const customizationCats = filterCategoryList(dbCategories, 'customization', ['CUSTOMIZATION', 'CUSTOM', 'CUSTOM APPAREL'], ['CUSTOM', 'CUSTOMIZ']);
   const customizationCatIds = customizationCats.map(c => String(c.id));
   const customizationCatNames = customizationCats.map(c => c.name.toUpperCase());
 
@@ -5917,12 +5929,7 @@ function CustomizationLandingPage({ products, wishlist, toggleWishlist, onNaviga
    2. EMBROIDERED APPAREL LANDING PAGE
    ========================================================================== */
 function EmbroideredLandingPage({ products, wishlist, toggleWishlist, onNavigateProduct, onGoHome, dbCategories = [], dbBanners = [], onCategoryClick, activeCategory = 'All', setActiveCategory }) {
-  const embroideredCats = dbCategories.filter(c => {
-    const nameUpper = (c.name || '').trim().toUpperCase();
-    const isRootName = ['EMBROIDERED APPAREL', 'EMBROIDERED'].includes(nameUpper);
-    const isTargetPage = (!c.show_in_pages || c.show_in_pages.split(',').map(s => s.trim()).includes('embroidered'));
-    return c.is_active !== false && String(c.is_active) !== '0' && !isRootName && isTargetPage;
-  });
+  const embroideredCats = filterCategoryList(dbCategories, 'embroidered', ['EMBROIDERED APPAREL', 'EMBROIDERED'], ['EMBROIDER', 'STITCH']);
   const embroideredCatIds = embroideredCats.map(c => String(c.id));
   const embroideredCatNames = embroideredCats.map(c => c.name.toUpperCase());
 
@@ -6030,12 +6037,7 @@ function EmbroideredLandingPage({ products, wishlist, toggleWishlist, onNavigate
    3. PATCHES LANDING PAGE
    ========================================================================== */
 function PatchesLandingPage({ products, wishlist, toggleWishlist, onNavigateProduct, onGoHome, dbCategories = [], dbBanners = [], onCategoryClick, activeCategory = 'All', setActiveCategory }) {
-  const patchesCats = dbCategories.filter(c => {
-    const nameUpper = (c.name || '').trim().toUpperCase();
-    const isRootName = ['PATCHES', 'PATCH'].includes(nameUpper);
-    const isTargetPage = (!c.show_in_pages || c.show_in_pages.split(',').map(s => s.trim()).includes('patches'));
-    return c.is_active !== false && String(c.is_active) !== '0' && !isRootName && isTargetPage;
-  });
+  const patchesCats = filterCategoryList(dbCategories, 'patches', ['PATCHES', 'PATCH'], ['PATCH', 'PATCHES']);
   const patchesCatIds = patchesCats.map(c => String(c.id));
   const patchesCatNames = patchesCats.map(c => c.name.toUpperCase());
 
@@ -6055,16 +6057,17 @@ function PatchesLandingPage({ products, wishlist, toggleWishlist, onNavigateProd
     redirect_to: c.redirect_to,
     gender: c.gender
   })) : [
-    { name: "Velcro Patches", img: "https://images.unsplash.com/photo-1549298916-b41d501d3772?q=80&w=600&auto=format&fit=crop" },
-    { name: "Iron-On Patches", img: "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?q=80&w=600&auto=format&fit=crop" },
-    { name: "Sew-On Patches", img: "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?q=80&w=600&auto=format&fit=crop" }
+    { id: 'velcro', name: "Velcro Patches", img: "https://images.unsplash.com/photo-1549298916-b41d501d3772?q=80&w=600&auto=format&fit=crop" },
+    { id: 'iron-on', name: "Iron-On Patches", img: "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?q=80&w=600&auto=format&fit=crop" },
+    { id: 'sew-on', name: "Sew-On Patches", img: "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?q=80&w=600&auto=format&fit=crop" }
   ];
 
-  const pageProducts = patchesCats.length > 0 ? products.filter(p => {
+  const pageProducts = (patchesCats.length > 0 || products.some(p => (p.category || '').toUpperCase().includes('PATCH'))) ? products.filter(p => {
     const matchesId = (p.categoryIds || []).some(id => patchesCatIds.includes(String(id)));
     const matchesName = (p.categoryNames || []).some(name => patchesCatNames.includes(name.toUpperCase()));
     const matchesMainName = p.category && patchesCatNames.includes(p.category.toUpperCase());
-    return matchesId || matchesName || matchesMainName;
+    const matchesKeyword = (p.category || '').toUpperCase().includes('PATCH') || (p.name || '').toUpperCase().includes('PATCH');
+    return matchesId || matchesName || matchesMainName || matchesKeyword;
   }) : products;
 
   const trendingPatches = pageProducts.slice(0, 4);
