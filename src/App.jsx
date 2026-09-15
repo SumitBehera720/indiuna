@@ -217,10 +217,35 @@ export default function App() {
   const [previousView, setPreviousView] = useState('home');
   const [activeProductId, setActiveProductId] = useState(1);
   const [isCustomizing, setIsCustomizing] = useState(false);
-  const [isScrolled, setIsScrolled] = useState(false);
-  // Search Modal States
+  // Search Modal States & Hooks
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const searchInputRef = useRef(null);
+
+  useEffect(() => {
+    if (isSearchOpen) {
+      document.body.style.overflow = 'hidden';
+      if (lenisRef.current) lenisRef.current.stop();
+      const timer = setTimeout(() => searchInputRef.current?.focus(), 60);
+      return () => clearTimeout(timer);
+    } else {
+      document.body.style.overflow = '';
+      if (lenisRef.current) lenisRef.current.start();
+    }
+  }, [isSearchOpen]);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setIsSearchOpen(prev => !prev);
+      } else if (e.key === 'Escape' && isSearchOpen) {
+        setIsSearchOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isSearchOpen]);
 
   // Order Success & Tracking Modal States
   const [placedOrderSuccess, setPlacedOrderSuccess] = useState(null);
@@ -1566,10 +1591,15 @@ export default function App() {
               </div>
             </div>
 
-
+            {/* Desktop Interactive Search Bar */}
+            <div className="desktop-header-search" onClick={() => setIsSearchOpen(true)}>
+              <Search size={18} style={{ color: '#e11d48', flexShrink: 0 }} />
+              <span className="desktop-header-search-placeholder">Search products, anime, embroidery, patches...</span>
+              <span className="desktop-header-search-kbd">⌘K</span>
+            </div>
 
             <div className="nav-actions">
-              <button className="nav-action-btn" aria-label="Search" onClick={() => setIsSearchOpen(true)}>
+              <button className="nav-action-btn" aria-label="Search" onClick={() => setIsSearchOpen(true)} title="Search (Ctrl+K)">
                 <Search size={20} />
               </button>
               {token && user ? (
@@ -2229,15 +2259,18 @@ export default function App() {
         <div 
           className="search-modal-overlay animate-fade-in"
           onClick={() => setIsSearchOpen(false)}
+          data-lenis-prevent="true"
         >
           <div 
             className="search-modal-card animate-scale-up"
             onClick={(e) => e.stopPropagation()}
+            data-lenis-prevent="true"
           >
             {/* Header / Input */}
-            <div className="search-modal-header">
+            <form onSubmit={(e) => e.preventDefault()} className="search-modal-header">
               <Search size={22} style={{ color: '#e11d48', flexShrink: 0 }} />
               <input
+                ref={searchInputRef}
                 type="text"
                 className="search-modal-input"
                 placeholder="Search products, anime, embroidery, patches..."
@@ -2247,6 +2280,7 @@ export default function App() {
               />
               {searchQuery && (
                 <button
+                  type="button"
                   onClick={() => setSearchQuery('')}
                   style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '6px', display: 'flex', alignItems: 'center' }}
                   aria-label="Clear search"
@@ -2255,6 +2289,7 @@ export default function App() {
                 </button>
               )}
               <button
+                type="button"
                 onClick={() => setIsSearchOpen(false)}
                 style={{
                   backgroundColor: '#f1f5f9',
@@ -2271,10 +2306,14 @@ export default function App() {
               >
                 Close
               </button>
-            </div>
+            </form>
 
             {/* Content / Live Results */}
-            <div className="search-modal-body">
+            <div 
+              className="search-modal-body"
+              data-lenis-prevent="true"
+              onWheel={(e) => e.stopPropagation()}
+            >
               {!searchQuery.trim() ? (
                 <div>
                   <div style={{ fontSize: '0.78rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '12px' }}>
@@ -2284,6 +2323,7 @@ export default function App() {
                     {['Oversized Tee', 'Demon Mask', 'Itachi', 'Anime Embroidery', 'Patches', 'Sweatshirt', 'Jeans'].map((tag, i) => (
                       <button
                         key={i}
+                        type="button"
                         className="search-chip-btn"
                         onClick={() => setSearchQuery(tag)}
                       >
@@ -2294,14 +2334,22 @@ export default function App() {
                 </div>
               ) : (
                 (() => {
-                  const query = searchQuery.trim().toLowerCase();
-                  const results = products.filter(p => 
-                    p.name.toLowerCase().includes(query) ||
-                    (p.category || '').toLowerCase().includes(query) ||
-                    (p.desc || '').toLowerCase().includes(query) ||
-                    (p.subCategories || []).some(sub => sub.toLowerCase().includes(query)) ||
-                    (p.tags || []).some(tag => String(tag).toLowerCase().includes(query))
-                  );
+                  const queryTokens = searchQuery.trim().toLowerCase().split(/\s+/).filter(Boolean);
+                  const results = products.filter(p => {
+                    const searchableParts = [
+                      p.name,
+                      p.category,
+                      p.desc,
+                      p.gender,
+                      p.code,
+                      ...(p.subCategories || []),
+                      ...(p.categoryNames || []),
+                      ...(p.tags || [])
+                    ].filter(Boolean).map(s => String(s).toLowerCase());
+
+                    const fullText = searchableParts.join(' ');
+                    return queryTokens.every(token => fullText.includes(token));
+                  });
 
                   if (results.length === 0) {
                     return (
@@ -2342,6 +2390,7 @@ export default function App() {
                             </span>
                           </div>
                           <button
+                            type="button"
                             style={{
                               padding: '7px 14px',
                               borderRadius: '8px',
