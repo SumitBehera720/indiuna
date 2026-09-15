@@ -224,13 +224,8 @@ export default function App() {
 
   useEffect(() => {
     if (isSearchOpen) {
-      document.body.style.overflow = 'hidden';
-      if (lenisRef.current) lenisRef.current.stop();
       const timer = setTimeout(() => searchInputRef.current?.focus(), 60);
       return () => clearTimeout(timer);
-    } else {
-      document.body.style.overflow = '';
-      if (lenisRef.current) lenisRef.current.start();
     }
   }, [isSearchOpen]);
 
@@ -1589,13 +1584,6 @@ export default function App() {
               <div className="logo-container" style={{ cursor: 'pointer' }} onClick={() => { changeView('home'); scrollToTop(); }}>
                 <img src="/images/Picsart_26-04-22_14-06-19-641.png" alt="INDIUNA Logo" className="logo-img" />
               </div>
-            </div>
-
-            {/* Desktop Interactive Search Bar */}
-            <div className="desktop-header-search" onClick={() => setIsSearchOpen(true)}>
-              <Search size={18} style={{ color: '#e11d48', flexShrink: 0 }} />
-              <span className="desktop-header-search-placeholder">Search products, anime, embroidery, patches...</span>
-              <span className="desktop-header-search-kbd">⌘K</span>
             </div>
 
             <div className="nav-actions">
