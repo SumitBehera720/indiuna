@@ -2545,7 +2545,7 @@ export default function App() {
               <div className="cart-empty">
                 <ShoppingBag />
                 <p>Your cart is empty.</p>
-                <button className="btn-solid-red" onClick={() => setIsCartOpen(false)}>Continue Shopping</button>
+                <button className="btn-solid-red" onClick={() => { setIsCartOpen(false); changeView('home'); scrollToTop(); }}>Continue Shopping</button>
               </div>
             ) : (
               cart.map((item, idx) => (
