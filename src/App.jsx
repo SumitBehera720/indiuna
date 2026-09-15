@@ -2449,83 +2449,80 @@ export default function App() {
       >
         <div className="mobile-menu" onClick={(e) => e.stopPropagation()}>
           <div className="mobile-menu-header">
-            <div className="logo-container" style={{ cursor: 'pointer' }} onClick={() => { setCurrentView('home'); setIsMobileMenuOpen(false); scrollToTop(); }}>
+            <div className="logo-container" style={{ cursor: 'pointer' }} onClick={() => { setIsMobileMenuOpen(false); changeView('home'); scrollToTop(); }}>
               <img src="/images/Picsart_26-04-22_14-06-19-641.png" alt="INDIUNA Logo" style={{ height: 'auto', maxHeight: '75px', maxWidth: '220px', width: 'auto', objectFit: 'contain' }} />
             </div>
-            <button className="mobile-menu-close" onClick={() => setIsMobileMenuOpen(false)}>
+            <button className="mobile-menu-close" onClick={() => setIsMobileMenuOpen(false)} aria-label="Close Menu">
               <X />
             </button>
           </div>
           <div className="mobile-menu-body">
             <nav className="mobile-nav-links" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <a href="#home" onClick={() => { setIsMobileMenuOpen(false); setCurrentView('home'); scrollToTop(); }} style={{ padding: '10px 0', borderBottom: '1px solid var(--color-border)' }}>Home</a>
+              <button 
+                type="button"
+                onClick={() => { setIsMobileMenuOpen(false); changeView('home'); scrollToTop(); }} 
+                style={{ background: 'none', border: 'none', textAlign: 'left', padding: '12px 0', borderBottom: '1px solid var(--color-border)', cursor: 'pointer', fontFamily: 'inherit', fontSize: '1rem', fontWeight: 700, color: 'inherit' }}
+              >
+                Home
+              </button>
               
               {/* Customization Main Category with Dropdown */}
               <div className="mobile-nav-dropdown-item" style={{ borderBottom: '1px solid var(--color-border)' }}>
-                <div 
-                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', padding: '12px 0' }}
-                  onClick={() => setOpenMobileDropdown(openMobileDropdown === 'customization' ? null : 'customization')}
-                >
-                  <a 
-                    href="#customization" 
-                    onClick={(e) => { 
-                      e.stopPropagation(); 
-                      e.preventDefault(); 
-                      setActiveCustomizationCategory('All');
-                      setIsMobileMenuOpen(false); 
-                      setCurrentView('customization'); 
-                      scrollToTop(); 
-                    }} 
-                    style={{ flex: 1, textDecoration: 'none', color: 'inherit', fontWeight: 700, fontSize: '0.95rem', letterSpacing: '0.04em' }}
-                  >
-                    CUSTOMIZATION
-                  </a>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0' }}>
                   <button 
                     type="button"
-                    onClick={(e) => { 
-                      e.stopPropagation(); 
-                      setOpenMobileDropdown(openMobileDropdown === 'customization' ? null : 'customization'); 
-                    }}
-                    style={{ background: 'none', border: 'none', padding: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', color: 'var(--color-text-dark)' }}
+                    onClick={() => { 
+                      setActiveCustomizationCategory('All');
+                      setIsMobileMenuOpen(false); 
+                      changeView('customization'); 
+                      scrollToTop(); 
+                    }} 
+                    style={{ background: 'none', border: 'none', flex: 1, textAlign: 'left', textDecoration: 'none', color: 'inherit', fontWeight: 700, fontSize: '0.95rem', letterSpacing: '0.04em', cursor: 'pointer', fontFamily: 'inherit' }}
+                  >
+                    CUSTOMIZATION
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => setOpenMobileDropdown(openMobileDropdown === 'customization' ? null : 'customization')}
+                    style={{ background: 'none', border: 'none', padding: '6px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', color: 'var(--color-text-dark)' }}
+                    aria-label="Toggle Customization Subcategories"
                   >
                     {openMobileDropdown === 'customization' ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
                   </button>
                 </div>
                 {openMobileDropdown === 'customization' && (
                   <div style={{ paddingLeft: '14px', display: 'flex', flexDirection: 'column', gap: '8px', borderLeft: '2px solid var(--color-primary, #ff2e93)', margin: '4px 0 12px 6px' }}>
-                    <a 
-                      href="#customization-all" 
-                      onClick={(e) => { 
-                        e.preventDefault(); 
+                    <button 
+                      type="button"
+                      onClick={() => { 
                         setActiveCustomizationCategory('All'); 
                         setIsMobileMenuOpen(false); 
-                        setCurrentView('customization'); 
+                        changeView('customization'); 
                         scrollToTop(); 
                       }}
-                      style={{ fontSize: '0.9rem', color: 'var(--color-text-dark)', fontWeight: 600, padding: '4px 0', textDecoration: 'none' }}
+                      style={{ background: 'none', border: 'none', textAlign: 'left', fontSize: '0.9rem', color: 'var(--color-text-dark)', fontWeight: 600, padding: '4px 0', cursor: 'pointer', fontFamily: 'inherit' }}
                     >
                       All Customization
-                    </a>
+                    </button>
                     {(customizationCats.length > 0 ? customizationCats : [
                       { id: 'custom-jackets', name: 'Custom Jackets' },
                       { id: 'custom-hoodies', name: 'Custom Hoodies' },
                       { id: 'custom-tees', name: 'Custom T-Shirts' },
                       { id: 'custom-caps', name: 'Custom Caps' }
                     ]).map(cat => (
-                      <a 
+                      <button 
                         key={cat.id} 
-                        href={`#cat-${cat.id}`}
-                        onClick={(e) => { 
-                          e.preventDefault();
+                        type="button"
+                        onClick={() => { 
                           setActiveCustomizationCategory(cat.id ? String(cat.id) : cat.name); 
                           setIsMobileMenuOpen(false); 
-                          setCurrentView('customization'); 
+                          changeView('customization'); 
                           scrollToTop();
                         }}
-                        style={{ fontSize: '0.88rem', color: 'var(--color-text-muted)', padding: '4px 0', textDecoration: 'none' }}
+                        style={{ background: 'none', border: 'none', textAlign: 'left', fontSize: '0.88rem', color: 'var(--color-text-muted)', padding: '4px 0', cursor: 'pointer', fontFamily: 'inherit' }}
                       >
                         {cat.name}
-                      </a>
+                      </button>
                     ))}
                   </div>
                 )}
@@ -2533,70 +2530,61 @@ export default function App() {
 
               {/* Embroidered Apparel Main Category with Dropdown */}
               <div className="mobile-nav-dropdown-item" style={{ borderBottom: '1px solid var(--color-border)' }}>
-                <div 
-                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', padding: '12px 0' }}
-                  onClick={() => setOpenMobileDropdown(openMobileDropdown === 'embroidered' ? null : 'embroidered')}
-                >
-                  <a 
-                    href="#embroidered" 
-                    onClick={(e) => { 
-                      e.stopPropagation(); 
-                      e.preventDefault(); 
-                      setActiveEmbroideredCategory('All');
-                      setIsMobileMenuOpen(false); 
-                      setCurrentView('embroidered'); 
-                      scrollToTop(); 
-                    }} 
-                    style={{ flex: 1, textDecoration: 'none', color: 'inherit', fontWeight: 700, fontSize: '0.95rem', letterSpacing: '0.04em' }}
-                  >
-                    EMBROIDERED APPAREL
-                  </a>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0' }}>
                   <button 
                     type="button"
-                    onClick={(e) => { 
-                      e.stopPropagation(); 
-                      setOpenMobileDropdown(openMobileDropdown === 'embroidered' ? null : 'embroidered'); 
-                    }}
-                    style={{ background: 'none', border: 'none', padding: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', color: 'var(--color-text-dark)' }}
+                    onClick={() => { 
+                      setActiveEmbroideredCategory('All');
+                      setIsMobileMenuOpen(false); 
+                      changeView('embroidered'); 
+                      scrollToTop(); 
+                    }} 
+                    style={{ background: 'none', border: 'none', flex: 1, textAlign: 'left', textDecoration: 'none', color: 'inherit', fontWeight: 700, fontSize: '0.95rem', letterSpacing: '0.04em', cursor: 'pointer', fontFamily: 'inherit' }}
+                  >
+                    EMBROIDERED APPAREL
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => setOpenMobileDropdown(openMobileDropdown === 'embroidered' ? null : 'embroidered')}
+                    style={{ background: 'none', border: 'none', padding: '6px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', color: 'var(--color-text-dark)' }}
+                    aria-label="Toggle Embroidered Subcategories"
                   >
                     {openMobileDropdown === 'embroidered' ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
                   </button>
                 </div>
                 {openMobileDropdown === 'embroidered' && (
                   <div style={{ paddingLeft: '14px', display: 'flex', flexDirection: 'column', gap: '8px', borderLeft: '2px solid var(--color-primary, #ff2e93)', margin: '4px 0 12px 6px' }}>
-                    <a 
-                      href="#embroidered-all" 
-                      onClick={(e) => { 
-                        e.preventDefault(); 
+                    <button 
+                      type="button"
+                      onClick={() => { 
                         setActiveEmbroideredCategory('All'); 
                         setIsMobileMenuOpen(false); 
-                        setCurrentView('embroidered'); 
+                        changeView('embroidered'); 
                         scrollToTop(); 
                       }}
-                      style={{ fontSize: '0.9rem', color: 'var(--color-text-dark)', fontWeight: 600, padding: '4px 0', textDecoration: 'none' }}
+                      style={{ background: 'none', border: 'none', textAlign: 'left', fontSize: '0.9rem', color: 'var(--color-text-dark)', fontWeight: 600, padding: '4px 0', cursor: 'pointer', fontFamily: 'inherit' }}
                     >
                       All Embroidered
-                    </a>
+                    </button>
                     {(embroideredCats.length > 0 ? embroideredCats : [
                       { id: 'emb-tshirts', name: 'Embroidered T-Shirts' },
                       { id: 'emb-hoodies', name: 'Embroidered Hoodies' },
                       { id: 'emb-sweatshirts', name: 'Embroidered Sweatshirts' },
                       { id: 'emb-jackets', name: 'Embroidered Jackets' }
                     ]).map(cat => (
-                      <a 
+                      <button 
                         key={cat.id} 
-                        href={`#cat-${cat.id}`}
-                        onClick={(e) => { 
-                          e.preventDefault();
+                        type="button"
+                        onClick={() => { 
                           setActiveEmbroideredCategory(cat.id ? String(cat.id) : cat.name); 
                           setIsMobileMenuOpen(false); 
-                          setCurrentView('embroidered'); 
+                          changeView('embroidered'); 
                           scrollToTop();
                         }}
-                        style={{ fontSize: '0.88rem', color: 'var(--color-text-muted)', padding: '4px 0', textDecoration: 'none' }}
+                        style={{ background: 'none', border: 'none', textAlign: 'left', fontSize: '0.88rem', color: 'var(--color-text-muted)', padding: '4px 0', cursor: 'pointer', fontFamily: 'inherit' }}
                       >
                         {cat.name}
-                      </a>
+                      </button>
                     ))}
                   </div>
                 )}
@@ -2604,70 +2592,61 @@ export default function App() {
 
               {/* Patches Main Category with Dropdown */}
               <div className="mobile-nav-dropdown-item" style={{ borderBottom: '1px solid var(--color-border)' }}>
-                <div 
-                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', padding: '12px 0' }}
-                  onClick={() => setOpenMobileDropdown(openMobileDropdown === 'patches' ? null : 'patches')}
-                >
-                  <a 
-                    href="#patches" 
-                    onClick={(e) => { 
-                      e.stopPropagation(); 
-                      e.preventDefault(); 
-                      setActivePatchesCategory('All');
-                      setIsMobileMenuOpen(false); 
-                      setCurrentView('patches'); 
-                      scrollToTop(); 
-                    }} 
-                    style={{ flex: 1, textDecoration: 'none', color: 'inherit', fontWeight: 700, fontSize: '0.95rem', letterSpacing: '0.04em' }}
-                  >
-                    PATCHES
-                  </a>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0' }}>
                   <button 
                     type="button"
-                    onClick={(e) => { 
-                      e.stopPropagation(); 
-                      setOpenMobileDropdown(openMobileDropdown === 'patches' ? null : 'patches'); 
-                    }}
-                    style={{ background: 'none', border: 'none', padding: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', color: 'var(--color-text-dark)' }}
+                    onClick={() => { 
+                      setActivePatchesCategory('All');
+                      setIsMobileMenuOpen(false); 
+                      changeView('patches'); 
+                      scrollToTop(); 
+                    }} 
+                    style={{ background: 'none', border: 'none', flex: 1, textAlign: 'left', textDecoration: 'none', color: 'inherit', fontWeight: 700, fontSize: '0.95rem', letterSpacing: '0.04em', cursor: 'pointer', fontFamily: 'inherit' }}
+                  >
+                    PATCHES
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => setOpenMobileDropdown(openMobileDropdown === 'patches' ? null : 'patches')}
+                    style={{ background: 'none', border: 'none', padding: '6px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', color: 'var(--color-text-dark)' }}
+                    aria-label="Toggle Patches Subcategories"
                   >
                     {openMobileDropdown === 'patches' ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
                   </button>
                 </div>
                 {openMobileDropdown === 'patches' && (
                   <div style={{ paddingLeft: '14px', display: 'flex', flexDirection: 'column', gap: '8px', borderLeft: '2px solid var(--color-primary, #ff2e93)', margin: '4px 0 12px 6px' }}>
-                    <a 
-                      href="#patches-all" 
-                      onClick={(e) => { 
-                        e.preventDefault(); 
+                    <button 
+                      type="button"
+                      onClick={() => { 
                         setActivePatchesCategory('All'); 
                         setIsMobileMenuOpen(false); 
-                        setCurrentView('patches'); 
+                        changeView('patches'); 
                         scrollToTop(); 
                       }}
-                      style={{ fontSize: '0.9rem', color: 'var(--color-text-dark)', fontWeight: 600, padding: '4px 0', textDecoration: 'none' }}
+                      style={{ background: 'none', border: 'none', textAlign: 'left', fontSize: '0.9rem', color: 'var(--color-text-dark)', fontWeight: 600, padding: '4px 0', cursor: 'pointer', fontFamily: 'inherit' }}
                     >
                       All Patches
-                    </a>
+                    </button>
                     {(patchesCats.length > 0 ? patchesCats : [
                       { id: 'iron-on-patches', name: 'Iron-On Patches' },
                       { id: 'chenille-patches', name: 'Chenille Patches' },
                       { id: 'custom-patches', name: 'Custom Patches' },
                       { id: 'velcro-patches', name: 'Velcro Patches' }
                     ]).map(cat => (
-                      <a 
+                      <button 
                         key={cat.id} 
-                        href={`#cat-${cat.id}`}
-                        onClick={(e) => { 
-                          e.preventDefault();
+                        type="button"
+                        onClick={() => { 
                           setActivePatchesCategory(cat.id ? String(cat.id) : cat.name); 
                           setIsMobileMenuOpen(false); 
-                          setCurrentView('patches'); 
+                          changeView('patches'); 
                           scrollToTop();
                         }}
-                        style={{ fontSize: '0.88rem', color: 'var(--color-text-muted)', padding: '4px 0', textDecoration: 'none' }}
+                        style={{ background: 'none', border: 'none', textAlign: 'left', fontSize: '0.88rem', color: 'var(--color-text-muted)', padding: '4px 0', cursor: 'pointer', fontFamily: 'inherit' }}
                       >
                         {cat.name}
-                      </a>
+                      </button>
                     ))}
                   </div>
                 )}
@@ -2685,14 +2664,14 @@ export default function App() {
                   { view: 'quality', label: 'Our Quality' },
                   { view: 'story', label: 'Our Story' }
                 ].map(p => (
-                  <a 
+                  <button 
                     key={p.view} 
-                    href={`#${p.view}`} 
-                    onClick={() => { setIsMobileMenuOpen(false); setCurrentView(p.view); scrollToTop(); }}
-                    style={{ fontSize: '0.85rem', color: 'var(--color-text-dark)', padding: '4px 0', display: 'block' }}
+                    type="button"
+                    onClick={() => { setIsMobileMenuOpen(false); changeView(p.view); scrollToTop(); }}
+                    style={{ background: 'none', border: 'none', textAlign: 'left', fontSize: '0.85rem', color: 'var(--color-text-dark)', padding: '4px 0', display: 'block', cursor: 'pointer', fontFamily: 'inherit' }}
                   >
                     {p.label}
-                  </a>
+                  </button>
                 ))}
               </div>
             </nav>
