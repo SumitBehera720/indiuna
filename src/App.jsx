@@ -335,6 +335,13 @@ export default function App() {
   const [authError, setAuthError] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
 
+  // Profile & Customer Account States
+  const [profileTab, setProfileTab] = useState('details');
+  const [userAddresses, setUserAddresses] = useState([]);
+  const [userOrders, setUserOrders] = useState([]);
+  const [orderLoading, setOrderLoading] = useState(false);
+  const [addressLoading, setAddressLoading] = useState(false);
+
   // Swipe & Wheel gesture handlers for Fresh Drops
   const [freshTouchStartX, setFreshTouchStartX] = useState(0);
   const [freshTouchEndX, setFreshTouchEndX] = useState(0);
@@ -6116,24 +6123,25 @@ function ProfilePage({
   user, 
   token, 
   API_BASE, 
-  wishlist, 
-  products, 
+  wishlist = [], 
+  products = [], 
   toggleWishlist, 
-  activeTab, 
-  setActiveTab, 
-  addresses, 
-  setAddresses, 
-  orders, 
-  setOrders, 
-  orderLoading, 
-  setOrderLoading, 
-  addressLoading, 
-  setAddressLoading, 
+  activeTab = 'details', 
+  setActiveTab = () => {}, 
+  addresses = [], 
+  setAddresses = () => {}, 
+  orders = [], 
+  setOrders = () => {}, 
+  orderLoading = false, 
+  setOrderLoading = () => {}, 
+  addressLoading = false, 
+  setAddressLoading = () => {}, 
   onLogout, 
   onNavigateProduct, 
   onGoHome,
   onChangeView
 }) {
+
   const [activeAddressForm, setActiveAddressForm] = useState(null); // null | 'new' | addressObj
   const [addressFirstName, setAddressFirstName] = useState('');
   const [addressLastName, setAddressLastName] = useState('');
@@ -6623,7 +6631,7 @@ function ProfilePage({
                 <div>
                   {addressLoading ? (
                     <div style={{ padding: '40px', textAlign: 'center' }}>Loading addresses...</div>
-                  ) : addresses.length > 0 ? (
+                  ) : (Array.isArray(addresses) && addresses.length > 0) ? (
                     <div className="address-grid">
                       {addresses.map(addr => (
                         <div key={addr.id} className={`address-card ${addr.is_default ? 'default' : ''}`}>
@@ -6712,7 +6720,7 @@ function ProfilePage({
               <h3 className="profile-content-title">Order History</h3>
               {orderLoading ? (
                 <div style={{ padding: '40px', textAlign: 'center' }}>Loading your orders...</div>
-              ) : orders.length > 0 ? (
+              ) : (Array.isArray(orders) && orders.length > 0) ? (
                 <div className="order-history-list">
                   {orders.map(order => (
                     <div key={order.id} className="order-card">
@@ -6730,15 +6738,16 @@ function ProfilePage({
                           </div>
                           <div className="order-meta-item">
                             <span className="order-meta-label">Total Amount</span>
-                            <span className="order-meta-value">₹{parseFloat(order.total).toLocaleString('en-IN')}</span>
+                            <span className="order-meta-value">₹{parseFloat(order.total || 0).toLocaleString('en-IN')}</span>
                           </div>
                           <div className="order-meta-item">
                             <span className="order-meta-label">Payment Status</span>
-                            <span className="order-meta-value" style={{ textTransform: 'uppercase' }}>{order.payment_status}</span>
+                            <span className="order-meta-value" style={{ textTransform: 'uppercase' }}>{order.payment_status || 'N/A'}</span>
                           </div>
                         </div>
-                        <span className={`order-status-badge ${order.status.toLowerCase()}`}>{order.status}</span>
+                        <span className={`order-status-badge ${(order.status || 'pending').toLowerCase()}`}>{order.status || 'Pending'}</span>
                       </div>
+
                       <div className="order-card-body">
                         {order.items?.map((item, idx) => (
                           <div key={idx} className="order-item-row">
