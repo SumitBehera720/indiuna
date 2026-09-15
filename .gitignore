@@ -12,6 +12,36 @@ dist
 dist-ssr
 *.local
 
+# Secrets & environment files
+.env
+.env.*
+!.env.example
+deploy.config.local.js
+*.zip
+
+# Legacy WordPress dump & stray imported image
+*.sql.gz
+75ed53db-e743-4b50-be09-703cf33427e4.png
+
+# Antigravity temporary artifacts
+scratch/
+artifact_images/
+
+# Laravel backend
+backend/vendor
+backend/.env
+backend/.env.*
+backend/bootstrap/cache/*.php
+backend/storage/*.key
+backend/storage/logs/*
+backend/storage/framework/cache/data/*
+backend/storage/framework/sessions/*
+backend/storage/framework/views/*
+!backend/storage/logs/.gitignore
+!backend/storage/framework/cache/data/.gitignore
+!backend/storage/framework/sessions/.gitignore
+!backend/storage/framework/views/.gitignore
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -22,3 +52,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# TypeScript build info
+*.tsbuildinfo
