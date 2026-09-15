@@ -5764,28 +5764,28 @@ function FilterableProductsBlock({
         ))}
       </div>
 
-      {/* Category Tabs (Tier 1) */}
+      {/* Category Tabs / Active Filter View */}
       {tabs.length > 1 && (
-        <div className="catalog-filter-pills" style={{ marginBottom: '25px' }}>
-          {tabs.map((tab) => (
-            <button 
-              key={tab.value} 
-              className={`catalog-filter-pill ${String(activeTab).toUpperCase() === String(tab.value).toUpperCase() ? 'active' : ''}`}
-              onClick={() => setActiveTab(tab.value)}
+        activeTab === 'All' || !activeTab ? (
+          <div className="catalog-filter-pills" style={{ marginBottom: '25px' }}>
+            {tabs.map((tab) => (
+              <button 
+                key={tab.value} 
+                className={`catalog-filter-pill ${String(activeTab).toUpperCase() === String(tab.value).toUpperCase() ? 'active' : ''}`}
+                onClick={() => setActiveTab(tab.value)}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="active-category-filter-bar" style={{ marginBottom: '25px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+            <div 
+              className="catalog-filter-pill active" 
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', cursor: 'default', padding: '8px 18px', backgroundColor: 'var(--color-primary, #ff2e93)', color: '#ffffff', borderRadius: '50px', fontSize: '0.88rem', fontWeight: 700, letterSpacing: '0.04em', boxShadow: '0 4px 12px rgba(255, 46, 147, 0.25)' }}
             >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Sub-category / Fit Option Row (Tier 2) */}
-      {!hideFitOptions && (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '35px' }}>
-          {activeTab !== 'All' && (
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', marginBottom: '12px', padding: '6px 16px', backgroundColor: '#111827', color: '#ffffff', borderRadius: '50px', fontSize: '0.8rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
               <span>Category:</span>
-              <span style={{ color: 'var(--color-primary)' }}>
+              <span>
                 {(() => {
                   const match = categories.find(c => String(c.id) === String(activeTab) || (c.name && c.name.toUpperCase() === String(activeTab).toUpperCase()))
                     || dbCategories.find(c => String(c.id) === String(activeTab) || (c.name && c.name.toUpperCase() === String(activeTab).toUpperCase()));
@@ -5800,14 +5800,28 @@ function FilterableProductsBlock({
               <button 
                 type="button"
                 onClick={() => setActiveTab('All')}
-                style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', padding: 0, marginLeft: '4px', display: 'flex', alignItems: 'center' }}
-                title="Show All Categories"
+                style={{ background: 'rgba(255, 255, 255, 0.25)', border: 'none', color: '#ffffff', cursor: 'pointer', padding: '2px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: '4px' }}
+                title="Cancel Filter & Show All Categories"
               >
                 <X size={14} />
               </button>
             </div>
-          )}
 
+            <button 
+              type="button"
+              onClick={() => setActiveTab('All')}
+              className="catalog-filter-pill"
+              style={{ fontSize: '0.85rem', padding: '8px 16px', borderRadius: '50px', border: '1px dashed var(--color-primary, #ff2e93)', color: 'var(--color-primary, #ff2e93)', cursor: 'pointer', background: 'transparent' }}
+            >
+              Cancel Filter (Show All)
+            </button>
+          </div>
+        )
+      )}
+
+      {/* Sub-category / Fit Option Row (Tier 2) */}
+      {!hideFitOptions && (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '35px' }}>
           <div className="catalog-filter-pills subcategories-pills-row" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', padding: '10px 15px', backgroundColor: 'var(--color-bg-alt, #f8fafc)', borderRadius: '12px', border: '1px solid var(--color-border, #e2e8f0)', width: 'fit-content' }}>
             {[
               { id: 'ALL', name: 'ALL' },
