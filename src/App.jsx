@@ -322,8 +322,15 @@ export default function App() {
   };
 
   // Auth States
-  const [token, setToken] = useState(localStorage.getItem('auth_token') || null);
-  const [user, setUser] = useState(JSON.parse(localStorage.getItem('user')) || null);
+  const [token, setToken] = useState(() => localStorage.getItem('auth_token') || localStorage.getItem('token') || null);
+  const [user, setUser] = useState(() => {
+    try {
+      const storedUser = localStorage.getItem('user');
+      return storedUser ? JSON.parse(storedUser) : null;
+    } catch (e) {
+      return null;
+    }
+  });
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [authTab, setAuthTab] = useState('login');
   const [authEmail, setAuthEmail] = useState('');
@@ -6201,23 +6208,84 @@ function ProfilePage({
     }
   }, [activeTab]);
 
+  const formatUserError = (status, data, actionName = 'perform this action') => {
+    if (status === 401 || data?.message === 'Unauthenticated.' || data?.message?.toLowerCase().includes('unauthenticated')) {
+      return {
+        title: 'Session Expired (Unauthenticated)',
+        message: 'Your login token is no longer valid or has expired.',
+        howToFix: 'Please sign in again to refresh your authentication.',
+        isAuthError: true
+      };
+    }
+    
+    if (status === 403) {
+      return {
+        title: 'Permission Denied',
+        message: data?.message || `You do not have permission to ${actionName}.`,
+        howToFix: 'Please sign out and log back in with an authorized account.'
+      };
+    }
+    
+    if (status === 422 || data?.errors) {
+      let errorDetails = '';
+      if (data?.errors && typeof data.errors === 'object') {
+        errorDetails = Object.entries(data.errors)
+          .map(([field, errs]) => `${field.replace('_', ' ')}: ${Array.isArray(errs) ? errs.join(', ') : errs}`)
+          .join('\n• ');
+      } else {
+        errorDetails = data?.message || 'Invalid input data provided.';
+      }
+      return {
+        title: 'Validation Error',
+        message: `The submitted details could not be validated:\n• ${errorDetails}`,
+        howToFix: 'Please check the required fields, correct any mistakes, and try again.'
+      };
+    }
+    
+    if (status >= 500) {
+      return {
+        title: 'Server Error',
+        message: data?.message || 'The server encountered an error processing your request.',
+        howToFix: 'Please wait a moment and try again.'
+      };
+    }
+
+    return {
+      title: 'Action Failed',
+      message: data?.message || `Could not ${actionName}.`,
+      howToFix: 'Please double-check your entries and try again.'
+    };
+  };
+
+  const showAlertError = (errObj) => {
+    alert(`⚠️ ${errObj.title}\n\nWhy it happened:\n${errObj.message}\n\nHow to fix:\n${errObj.howToFix}`);
+    if (errObj.isAuthError && typeof onLogout === 'function') {
+      onLogout();
+    }
+  };
+
   const fetchAddresses = async () => {
-    if (!token) return;
+    const currentToken = token || localStorage.getItem('auth_token') || localStorage.getItem('token');
+    if (!currentToken) return;
     setAddressLoading(true);
     try {
       const pRes = await fetch(`${API_BASE}/customer/profile`, {
-        headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
+        headers: { 'Authorization': `Bearer ${currentToken}`, 'Accept': 'application/json' }
       });
       const pData = await pRes.json();
-      if (pRes.ok && pData.success) {
+      if (pRes.ok && pData.success && pData.data?.id) {
         const customerId = pData.data.id;
         const res = await fetch(`${API_BASE}/customer/${customerId}/addresses`, {
-          headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
+          headers: { 'Authorization': `Bearer ${currentToken}`, 'Accept': 'application/json' }
         });
         const data = await res.json();
         if (res.ok && data.success) {
-          setAddresses(data.data);
+          setAddresses(Array.isArray(data.data) ? data.data : []);
+        } else if (res.status === 401) {
+          showAlertError(formatUserError(401, data, 'load addresses'));
         }
+      } else if (pRes.status === 401) {
+        showAlertError(formatUserError(401, pData, 'load account profile'));
       }
     } catch (err) {
       console.error('Failed to load addresses:', err);
@@ -6227,15 +6295,19 @@ function ProfilePage({
   };
 
   const fetchOrders = async () => {
-    if (!token) return;
+    const currentToken = token || localStorage.getItem('auth_token') || localStorage.getItem('token');
+    if (!currentToken) return;
     setOrderLoading(true);
     try {
       const res = await fetch(`${API_BASE}/customer/orders`, {
-        headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
+        headers: { 'Authorization': `Bearer ${currentToken}`, 'Accept': 'application/json' }
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        setOrders(data.data.data || data.data);
+        const orderList = data.data?.data || data.data;
+        setOrders(Array.isArray(orderList) ? orderList : []);
+      } else if (res.status === 401) {
+        showAlertError(formatUserError(401, data, 'load order history'));
       }
     } catch (err) {
       console.error('Failed to load orders:', err);
@@ -6246,13 +6318,18 @@ function ProfilePage({
 
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
+    const currentToken = token || localStorage.getItem('auth_token') || localStorage.getItem('token');
+    if (!currentToken) {
+      showAlertError(formatUserError(401, null, 'update profile'));
+      return;
+    }
     setDetailsLoading(true);
     try {
       const res = await fetch(`${API_BASE}/customer/profile`, {
         method: 'PUT',
         headers: { 
           'Content-Type': 'application/json', 
-          'Authorization': `Bearer ${token}`, 
+          'Authorization': `Bearer ${currentToken}`, 
           'Accept': 'application/json' 
         },
         body: JSON.stringify({
@@ -6267,11 +6344,12 @@ function ProfilePage({
         const updatedUser = { ...user, first_name: detailsFirstName, last_name: detailsLastName, phone: detailsPhone };
         localStorage.setItem('user', JSON.stringify(updatedUser));
       } else {
-        alert(data.message || 'Failed to update details');
+        const errObj = formatUserError(res.status, data, 'update profile details');
+        showAlertError(errObj);
       }
     } catch (err) {
       console.error(err);
-      alert('An error occurred');
+      alert('⚠️ Network Error\n\nWhy it happened:\nUnable to connect to the server.\n\nHow to fix:\nPlease check your internet connection and try again.');
     } finally {
       setDetailsLoading(false);
     }
@@ -6307,12 +6385,24 @@ function ProfilePage({
 
   const handleSaveAddress = async (e) => {
     e.preventDefault();
+    const currentToken = token || localStorage.getItem('auth_token') || localStorage.getItem('token');
+    if (!currentToken) {
+      showAlertError(formatUserError(401, null, 'save address'));
+      return;
+    }
     try {
       const pRes = await fetch(`${API_BASE}/customer/profile`, {
-        headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
+        headers: { 'Authorization': `Bearer ${currentToken}`, 'Accept': 'application/json' }
       });
       const pData = await pRes.json();
-      if (pRes.ok && pData.success && pData.data?.id) {
+      
+      if (!pRes.ok) {
+        const errObj = formatUserError(pRes.status, pData, 'retrieve customer profile');
+        showAlertError(errObj);
+        return;
+      }
+
+      if (pData.success && pData.data?.id) {
         const customerId = pData.data.id;
         const payload = {
           first_name: addressFirstName || user?.first_name || 'Customer',
@@ -6334,7 +6424,7 @@ function ProfilePage({
             method: 'POST',
             headers: { 
               'Content-Type': 'application/json', 
-              'Authorization': `Bearer ${token}`, 
+              'Authorization': `Bearer ${currentToken}`, 
               'Accept': 'application/json' 
             },
             body: JSON.stringify(payload)
@@ -6344,7 +6434,7 @@ function ProfilePage({
             method: 'PUT',
             headers: { 
               'Content-Type': 'application/json', 
-              'Authorization': `Bearer ${token}`, 
+              'Authorization': `Bearer ${currentToken}`, 
               'Accept': 'application/json' 
             },
             body: JSON.stringify(payload)
@@ -6357,41 +6447,53 @@ function ProfilePage({
           setActiveAddressForm(null);
           fetchAddresses();
         } else {
-          const errMsg = data.message || (data.errors ? Object.values(data.errors).flat().join(', ') : 'Failed to save address');
-          alert(errMsg);
+          const errObj = formatUserError(res.status, data, 'save address');
+          showAlertError(errObj);
         }
       } else {
-        alert(pData.message || 'Could not retrieve customer account profile.');
+        showAlertError(formatUserError(pRes.status, pData, 'retrieve customer profile'));
       }
     } catch (err) {
       console.error(err);
-      alert('An error occurred while saving address.');
+      alert('⚠️ Network Error\n\nWhy it happened:\nUnable to connect to the server.\n\nHow to fix:\nPlease check your internet connection and try again.');
     }
   };
 
   const handleDeleteAddress = async (id) => {
     if (!confirm('Are you sure you want to delete this address?')) return;
+    const currentToken = token || localStorage.getItem('auth_token') || localStorage.getItem('token');
+    if (!currentToken) {
+      showAlertError(formatUserError(401, null, 'delete address'));
+      return;
+    }
     try {
       const pRes = await fetch(`${API_BASE}/customer/profile`, {
-        headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
+        headers: { 'Authorization': `Bearer ${currentToken}`, 'Accept': 'application/json' }
       });
       const pData = await pRes.json();
-      if (pRes.ok && pData.success) {
+      if (pRes.ok && pData.success && pData.data?.id) {
         const customerId = pData.data.id;
         const res = await fetch(`${API_BASE}/customer/${customerId}/addresses/${id}`, {
           method: 'DELETE',
-          headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
+          headers: { 'Authorization': `Bearer ${currentToken}`, 'Accept': 'application/json' }
         });
         if (res.ok) {
           fetchAddresses();
         } else {
-          alert('Failed to delete address');
+          const data = await res.json();
+          const errObj = formatUserError(res.status, data, 'delete address');
+          showAlertError(errObj);
         }
+      } else {
+        const errObj = formatUserError(pRes.status, pData, 'delete address');
+        showAlertError(errObj);
       }
     } catch (err) {
       console.error(err);
+      alert('⚠️ Network Error\n\nWhy it happened:\nUnable to connect to the server.\n\nHow to fix:\nPlease check your internet connection and try again.');
     }
   };
+
 
   const wishlistProducts = products.filter(p => wishlist.includes(p.id));
 
