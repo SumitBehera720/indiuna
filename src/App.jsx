@@ -1430,24 +1430,46 @@ export default function App() {
 
   const handleCategoryClick = (cat) => {
     const redirect = String(cat?.redirectTo || cat?.redirect_to || '').toLowerCase().trim();
-    const nameUpper = String(cat?.name || cat?.filter || '').toUpperCase().trim();
+    const catName = cat?.name || cat?.filter || '';
+    const nameUpper = String(catName).toUpperCase().trim();
     const slugLower = String(cat?.slug || '').toLowerCase().trim();
 
+    const scrollToCatalog = () => {
+      setTimeout(() => {
+        document.getElementById('customization-catalog')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 150);
+    };
+
     if (redirect === 'customization' || nameUpper.includes('CUSTOMIZ') || slugLower.includes('customiz')) {
+      if (catName && !nameUpper.includes('ALL CUSTOMIZATION') && !['CUSTOMIZATION', 'CUSTOM', 'CUSTOM APPAREL'].includes(nameUpper)) {
+        setActiveCustomizationCategory(catName);
+      } else {
+        setActiveCustomizationCategory('All');
+      }
       changeView('customization');
-      scrollToTop();
+      scrollToCatalog();
       return;
     }
     
     if (redirect === 'embroidered' || nameUpper.includes('EMBROIDER') || slugLower.includes('embroider')) {
+      if (catName && !nameUpper.includes('ALL EMBROIDERED') && !['EMBROIDERED APPAREL', 'EMBROIDERED'].includes(nameUpper)) {
+        setActiveEmbroideredCategory(catName);
+      } else {
+        setActiveEmbroideredCategory('All');
+      }
       changeView('embroidered');
-      scrollToTop();
+      scrollToCatalog();
       return;
     }
     
     if (redirect === 'patches' || nameUpper.includes('PATCH') || slugLower.includes('patch')) {
+      if (catName && !nameUpper.includes('ALL PATCHES') && !['PATCHES', 'PATCH'].includes(nameUpper)) {
+        setActivePatchesCategory(catName);
+      } else {
+        setActivePatchesCategory('All');
+      }
       changeView('patches');
-      scrollToTop();
+      scrollToCatalog();
       return;
     }
 
@@ -1459,14 +1481,16 @@ export default function App() {
 
     if (redirect === 'new-arrivals') {
       changeView('home');
-      setTimeout(() => document.getElementById('new-arrivals-section')?.scrollIntoView({ behavior: 'smooth' }), 100);
+      setTimeout(() => document.getElementById('new-arrivals-section')?.scrollIntoView({ behavior: 'smooth' }), 150);
       return;
     }
 
-    // Default fallback for any category: route to customization page
+    // Default fallback for any category: route to customization page & scroll to catalog
+    if (catName) setActiveCustomizationCategory(catName);
     changeView('customization');
-    scrollToTop();
+    scrollToCatalog();
   };
+
 
   const activeProduct = products.find(p => String(p.id) === String(activeProductId)) || products[0];
 
@@ -2475,7 +2499,7 @@ export default function App() {
                       setActiveCustomizationCategory('All');
                       setIsMobileMenuOpen(false); 
                       changeView('customization'); 
-                      scrollToTop(); 
+                      setTimeout(() => { document.getElementById('customization-catalog')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 150);
                     }} 
                     style={{ background: 'none', border: 'none', flex: 1, textAlign: 'left', textDecoration: 'none', color: 'inherit', fontWeight: 700, fontSize: '0.95rem', letterSpacing: '0.04em', cursor: 'pointer', fontFamily: 'inherit' }}
                   >
@@ -2498,7 +2522,7 @@ export default function App() {
                         setActiveCustomizationCategory('All'); 
                         setIsMobileMenuOpen(false); 
                         changeView('customization'); 
-                        scrollToTop(); 
+                        setTimeout(() => { document.getElementById('customization-catalog')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 150);
                       }}
                       style={{ background: 'none', border: 'none', textAlign: 'left', fontSize: '0.9rem', color: 'var(--color-text-dark)', fontWeight: 600, padding: '4px 0', cursor: 'pointer', fontFamily: 'inherit' }}
                     >
@@ -2514,10 +2538,10 @@ export default function App() {
                         key={cat.id} 
                         type="button"
                         onClick={() => { 
-                          setActiveCustomizationCategory(cat.id ? String(cat.id) : cat.name); 
+                          setActiveCustomizationCategory(cat.name || String(cat.id)); 
                           setIsMobileMenuOpen(false); 
                           changeView('customization'); 
-                          scrollToTop();
+                          setTimeout(() => { document.getElementById('customization-catalog')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 150);
                         }}
                         style={{ background: 'none', border: 'none', textAlign: 'left', fontSize: '0.88rem', color: 'var(--color-text-muted)', padding: '4px 0', cursor: 'pointer', fontFamily: 'inherit' }}
                       >
@@ -2537,7 +2561,7 @@ export default function App() {
                       setActiveEmbroideredCategory('All');
                       setIsMobileMenuOpen(false); 
                       changeView('embroidered'); 
-                      scrollToTop(); 
+                      setTimeout(() => { document.getElementById('customization-catalog')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 150);
                     }} 
                     style={{ background: 'none', border: 'none', flex: 1, textAlign: 'left', textDecoration: 'none', color: 'inherit', fontWeight: 700, fontSize: '0.95rem', letterSpacing: '0.04em', cursor: 'pointer', fontFamily: 'inherit' }}
                   >
@@ -2560,7 +2584,7 @@ export default function App() {
                         setActiveEmbroideredCategory('All'); 
                         setIsMobileMenuOpen(false); 
                         changeView('embroidered'); 
-                        scrollToTop(); 
+                        setTimeout(() => { document.getElementById('customization-catalog')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 150);
                       }}
                       style={{ background: 'none', border: 'none', textAlign: 'left', fontSize: '0.9rem', color: 'var(--color-text-dark)', fontWeight: 600, padding: '4px 0', cursor: 'pointer', fontFamily: 'inherit' }}
                     >
@@ -2576,10 +2600,10 @@ export default function App() {
                         key={cat.id} 
                         type="button"
                         onClick={() => { 
-                          setActiveEmbroideredCategory(cat.id ? String(cat.id) : cat.name); 
+                          setActiveEmbroideredCategory(cat.name || String(cat.id)); 
                           setIsMobileMenuOpen(false); 
                           changeView('embroidered'); 
-                          scrollToTop();
+                          setTimeout(() => { document.getElementById('customization-catalog')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 150);
                         }}
                         style={{ background: 'none', border: 'none', textAlign: 'left', fontSize: '0.88rem', color: 'var(--color-text-muted)', padding: '4px 0', cursor: 'pointer', fontFamily: 'inherit' }}
                       >
@@ -2599,7 +2623,7 @@ export default function App() {
                       setActivePatchesCategory('All');
                       setIsMobileMenuOpen(false); 
                       changeView('patches'); 
-                      scrollToTop(); 
+                      setTimeout(() => { document.getElementById('customization-catalog')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 150);
                     }} 
                     style={{ background: 'none', border: 'none', flex: 1, textAlign: 'left', textDecoration: 'none', color: 'inherit', fontWeight: 700, fontSize: '0.95rem', letterSpacing: '0.04em', cursor: 'pointer', fontFamily: 'inherit' }}
                   >
@@ -2622,7 +2646,7 @@ export default function App() {
                         setActivePatchesCategory('All'); 
                         setIsMobileMenuOpen(false); 
                         changeView('patches'); 
-                        scrollToTop(); 
+                        setTimeout(() => { document.getElementById('customization-catalog')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 150);
                       }}
                       style={{ background: 'none', border: 'none', textAlign: 'left', fontSize: '0.9rem', color: 'var(--color-text-dark)', fontWeight: 600, padding: '4px 0', cursor: 'pointer', fontFamily: 'inherit' }}
                     >
@@ -2638,10 +2662,10 @@ export default function App() {
                         key={cat.id} 
                         type="button"
                         onClick={() => { 
-                          setActivePatchesCategory(cat.id ? String(cat.id) : cat.name); 
+                          setActivePatchesCategory(cat.name || String(cat.id)); 
                           setIsMobileMenuOpen(false); 
                           changeView('patches'); 
-                          scrollToTop();
+                          setTimeout(() => { document.getElementById('customization-catalog')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 150);
                         }}
                         style={{ background: 'none', border: 'none', textAlign: 'left', fontSize: '0.88rem', color: 'var(--color-text-muted)', padding: '4px 0', cursor: 'pointer', fontFamily: 'inherit' }}
                       >
@@ -5290,7 +5314,7 @@ function FilterableProductsBlock({
     { label: 'All', value: 'All' },
     ...cleanCategories.map(c => ({
       label: c.name,
-      value: c.id ? String(c.id) : c.name
+      value: c.name
     }))
   ] : [
     { label: 'All', value: 'All' },
@@ -5385,8 +5409,14 @@ function FilterableProductsBlock({
               <span>Category:</span>
               <span style={{ color: 'var(--color-primary)' }}>
                 {(() => {
-                  const match = categories.find(c => String(c.id) === String(activeTab) || c.name.toUpperCase() === String(activeTab).toUpperCase());
-                  return match ? match.name : activeTab;
+                  const match = categories.find(c => String(c.id) === String(activeTab) || (c.name && c.name.toUpperCase() === String(activeTab).toUpperCase()))
+                    || dbCategories.find(c => String(c.id) === String(activeTab) || (c.name && c.name.toUpperCase() === String(activeTab).toUpperCase()));
+                  if (match && match.name) return match.name;
+                  if (/^\d+$/.test(String(activeTab)) || String(activeTab).length > 20) {
+                    const prodMatch = products.find(p => (p.categoryIds || []).some(id => String(id) === String(activeTab)));
+                    if (prodMatch && prodMatch.category) return prodMatch.category;
+                  }
+                  return activeTab;
                 })()}
               </span>
               <button 
@@ -5638,11 +5668,11 @@ function CustomizationLandingPage({ products, wishlist, toggleWishlist, onNaviga
         categories={categories} 
         onCategoryClick={(cat) => {
           const redirect = cat.redirect_to || cat.redirectTo || '';
+          const filterValue = cat.name || String(cat.id) || 'All';
+          setActiveCategory(filterValue);
           if (redirect && ['customization', 'embroidered', 'patches', 'home'].includes(redirect)) {
             onCategoryClick(cat);
           } else {
-            const filterValue = cat.id ? String(cat.id) : (cat.name || 'All');
-            setActiveCategory(filterValue);
             setTimeout(() => {
               document.getElementById('customization-catalog')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }, 100);
@@ -5735,11 +5765,11 @@ function EmbroideredLandingPage({ products, wishlist, toggleWishlist, onNavigate
         categories={categories} 
         onCategoryClick={(cat) => {
           const redirect = cat.redirect_to || cat.redirectTo || '';
+          const filterValue = cat.name || String(cat.id) || 'All';
+          setActiveCategory(filterValue);
           if (redirect && ['customization', 'embroidered', 'patches', 'home'].includes(redirect)) {
             onCategoryClick(cat);
           } else {
-            const filterValue = cat.id ? String(cat.id) : (cat.name || 'All');
-            setActiveCategory(filterValue);
             setTimeout(() => {
               document.getElementById('customization-catalog')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }, 100);
@@ -5839,11 +5869,11 @@ function PatchesLandingPage({ products, wishlist, toggleWishlist, onNavigateProd
         categories={categories} 
         onCategoryClick={(cat) => {
           const redirect = cat.redirect_to || cat.redirectTo || '';
+          const filterValue = cat.name || String(cat.id) || 'All';
+          setActiveCategory(filterValue);
           if (redirect && ['customization', 'embroidered', 'patches', 'home'].includes(redirect)) {
             onCategoryClick(cat);
           } else {
-            const filterValue = cat.id ? String(cat.id) : (cat.name || 'All');
-            setActiveCategory(filterValue);
             setTimeout(() => {
               document.getElementById('customization-catalog')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }, 100);
