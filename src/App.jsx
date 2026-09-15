@@ -143,20 +143,99 @@ const isProductOutOfStock = (product) => {
   return false;
 };
 
+const PAGE_SUBCATEGORY_MAP = {
+  customization: [
+    'LOGO embroidery',
+    'CUSTOMIZE Embroidery',
+    'pet embroidery',
+    'vechicle embroidery',
+    'portrait embroidery'
+  ],
+  embroidered: [
+    'Anime Universe',
+    'Festive Collection',
+    'IndiUna Signature',
+    'Limited Edition',
+    'Luxury Zone',
+    'National Prides',
+    'Nature Studio',
+    'Spiritual Heritage',
+    'Travel Series',
+    'Urban Culture'
+  ],
+  patches: [
+    'Iron on patches',
+    'keychain patches',
+    'magnetic patches',
+    'Sew on patches'
+  ]
+};
+
+const DEFAULT_SUBCATEGORY_IMAGES = {
+  'LOGO embroidery': '/images/hero_banner.png',
+  'CUSTOMIZE Embroidery': 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?q=80&w=600&auto=format&fit=crop',
+  'pet embroidery': 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?q=80&w=600&auto=format&fit=crop',
+  'vechicle embroidery': 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?q=80&w=600&auto=format&fit=crop',
+  'portrait embroidery': 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?q=80&w=600&auto=format&fit=crop',
+
+  'Anime Universe': '/images/products/chaos_anime_tee.png',
+  'Festive Collection': 'https://images.unsplash.com/photo-1512436991641-6745cdb1723f?q=80&w=600&auto=format&fit=crop',
+  'IndiUna Signature': '/images/products/demon_mask_tee.png',
+  'Limited Edition': 'https://images.unsplash.com/photo-1556821840-3a63f95609a7?q=80&w=600&auto=format&fit=crop',
+  'Luxury Zone': 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=80&w=600&auto=format&fit=crop',
+  'National Prides': 'https://images.unsplash.com/photo-1578932750294-f5075e85f44a?q=80&w=600&auto=format&fit=crop',
+  'Nature Studio': 'https://images.unsplash.com/photo-1448375240586-882707db888b?q=80&w=600&auto=format&fit=crop',
+  'Spiritual Heritage': 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=600&auto=format&fit=crop',
+  'Travel Series': 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?q=80&w=600&auto=format&fit=crop',
+  'Urban Culture': 'https://images.unsplash.com/photo-1529139574466-a303027c1d8b?q=80&w=600&auto=format&fit=crop',
+
+  'Iron on patches': 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?q=80&w=600&auto=format&fit=crop',
+  'keychain patches': 'https://images.unsplash.com/photo-1582142306909-195fc072569c?q=80&w=600&auto=format&fit=crop',
+  'magnetic patches': 'https://images.unsplash.com/photo-1549298916-b41d501d3772?q=80&w=600&auto=format&fit=crop',
+  'Sew on patches': 'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?q=80&w=600&auto=format&fit=crop'
+};
+
+const getFallbackCategoriesForPage = (pageType) => {
+  const pageKey = (pageType || '').toLowerCase();
+  const names = PAGE_SUBCATEGORY_MAP[pageKey] || [];
+  return names.map((name, idx) => ({
+    id: `${pageKey}-${idx + 1}`,
+    name: name,
+    image: DEFAULT_SUBCATEGORY_IMAGES[name] || '/images/hero_banner.png',
+    redirect_to: pageKey
+  }));
+};
+
 const filterCategoryList = (cats, pageType, rootNames, keywords) => {
+  const pageKey = (pageType || '').toLowerCase();
+  const targetSubcatNames = PAGE_SUBCATEGORY_MAP[pageKey] || [];
   const parentRoot = (cats || []).find(p => rootNames.includes((p.name || '').trim().toUpperCase()));
-  return (cats || []).filter(c => {
-    if (c.is_active === false || String(c.is_active) !== '0') return false;
+
+  const matchedFromDb = (cats || []).filter(c => {
+    if (c.is_active === false || String(c.is_active) === '0') return false;
     const nameUpper = (c.name || '').trim().toUpperCase();
     if (rootNames.includes(nameUpper)) return false;
 
+    const matchesExplicitTarget = targetSubcatNames.some(tName => tName.toUpperCase() === nameUpper);
     const pages = (c.show_in_pages || '').split(',').map(s => s.trim().toLowerCase());
-    const matchesPage = pages.includes(pageType.toLowerCase());
+    const matchesPage = pages.includes(pageKey);
     const matchesName = keywords.some(kw => nameUpper.includes(kw));
     const matchesParent = parentRoot && String(c.parent_id) === String(parentRoot.id);
 
-    return matchesPage || matchesName || matchesParent;
+    return matchesExplicitTarget || matchesPage || matchesName || matchesParent;
   });
+
+  const existingNamesUpper = matchedFromDb.map(c => (c.name || '').trim().toUpperCase());
+  const missingCategories = targetSubcatNames
+    .filter(tName => !existingNamesUpper.includes(tName.toUpperCase()))
+    .map((tName, idx) => ({
+      id: `${pageKey}-fallback-${idx + 1}`,
+      name: tName,
+      image: DEFAULT_SUBCATEGORY_IMAGES[tName] || '/images/hero_banner.png',
+      redirect_to: pageKey
+    }));
+
+  return [...matchedFromDb, ...missingCategories];
 };
 
 const matchProductFitOrTag = (p, filterValue) => {
@@ -1520,7 +1599,11 @@ export default function App() {
       }, 150);
     };
 
-    if (redirect === 'customization' || nameUpper.includes('CUSTOMIZ') || slugLower.includes('customiz')) {
+    const isCustomizationSubcat = (PAGE_SUBCATEGORY_MAP.customization || []).some(name => name.toUpperCase() === nameUpper);
+    const isEmbroideredSubcat = (PAGE_SUBCATEGORY_MAP.embroidered || []).some(name => name.toUpperCase() === nameUpper);
+    const isPatchesSubcat = (PAGE_SUBCATEGORY_MAP.patches || []).some(name => name.toUpperCase() === nameUpper);
+
+    if (redirect === 'customization' || isCustomizationSubcat || nameUpper.includes('CUSTOMIZ') || slugLower.includes('customiz')) {
       if (catName && !nameUpper.includes('ALL CUSTOMIZATION') && !['CUSTOMIZATION', 'CUSTOM', 'CUSTOM APPAREL'].includes(nameUpper)) {
         setActiveCustomizationCategory(catName);
       } else {
@@ -1531,7 +1614,7 @@ export default function App() {
       return;
     }
     
-    if (redirect === 'embroidered' || nameUpper.includes('EMBROIDER') || slugLower.includes('embroider')) {
+    if (redirect === 'embroidered' || isEmbroideredSubcat || nameUpper.includes('EMBROIDER') || slugLower.includes('embroider')) {
       if (catName && !nameUpper.includes('ALL EMBROIDERED') && !['EMBROIDERED APPAREL', 'EMBROIDERED'].includes(nameUpper)) {
         setActiveEmbroideredCategory(catName);
       } else {
@@ -1542,7 +1625,7 @@ export default function App() {
       return;
     }
     
-    if (redirect === 'patches' || nameUpper.includes('PATCH') || slugLower.includes('patch')) {
+    if (redirect === 'patches' || isPatchesSubcat || nameUpper.includes('PATCH') || slugLower.includes('patch')) {
       if (catName && !nameUpper.includes('ALL PATCHES') && !['PATCHES', 'PATCH'].includes(nameUpper)) {
         setActivePatchesCategory(catName);
       } else {
@@ -2627,12 +2710,7 @@ export default function App() {
                     >
                       All Customization
                     </button>
-                    {(customizationCats.length > 0 ? customizationCats : [
-                      { id: 'custom-jackets', name: 'Custom Jackets' },
-                      { id: 'custom-hoodies', name: 'Custom Hoodies' },
-                      { id: 'custom-tees', name: 'Custom T-Shirts' },
-                      { id: 'custom-caps', name: 'Custom Caps' }
-                    ]).map(cat => (
+                    {(customizationCats.length > 0 ? customizationCats : getFallbackCategoriesForPage('customization')).map(cat => (
                       <button 
                         key={cat.id} 
                         type="button"
@@ -2689,12 +2767,7 @@ export default function App() {
                     >
                       All Embroidered
                     </button>
-                    {(embroideredCats.length > 0 ? embroideredCats : [
-                      { id: 'emb-tshirts', name: 'Embroidered T-Shirts' },
-                      { id: 'emb-hoodies', name: 'Embroidered Hoodies' },
-                      { id: 'emb-sweatshirts', name: 'Embroidered Sweatshirts' },
-                      { id: 'emb-jackets', name: 'Embroidered Jackets' }
-                    ]).map(cat => (
+                    {(embroideredCats.length > 0 ? embroideredCats : getFallbackCategoriesForPage('embroidered')).map(cat => (
                       <button 
                         key={cat.id} 
                         type="button"
@@ -2751,12 +2824,7 @@ export default function App() {
                     >
                       All Patches
                     </button>
-                    {(patchesCats.length > 0 ? patchesCats : [
-                      { id: 'iron-on-patches', name: 'Iron-On Patches' },
-                      { id: 'chenille-patches', name: 'Chenille Patches' },
-                      { id: 'custom-patches', name: 'Custom Patches' },
-                      { id: 'velcro-patches', name: 'Velcro Patches' }
-                    ]).map(cat => (
+                    {(patchesCats.length > 0 ? patchesCats : getFallbackCategoriesForPage('patches')).map(cat => (
                       <button 
                         key={cat.id} 
                         type="button"
