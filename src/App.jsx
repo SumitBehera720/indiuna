@@ -5696,8 +5696,8 @@ function FilterableProductsBlock({
         ))}
       </div>
 
-      {/* Category Tabs (Tier 1) - Only shown when activeTab === 'All' */}
-      {activeTab === 'All' && tabs.length > 1 && (
+      {/* Category Tabs (Tier 1) */}
+      {tabs.length > 1 && (
         <div className="catalog-filter-pills" style={{ marginBottom: '25px' }}>
           {tabs.map((tab) => (
             <button 
@@ -5974,23 +5974,21 @@ function CustomizationLandingPage({ products, wishlist, toggleWishlist, onNaviga
         onCtaClick={() => { document.getElementById('customization-catalog')?.scrollIntoView({ behavior: 'smooth' }); }}
       />
       <TrustBadges />
-      {activeCategory === 'All' && (
-        <LandingCategories 
-          categories={categories} 
-          onCategoryClick={(cat) => {
-            const redirect = cat.redirect_to || cat.redirectTo || '';
-            const filterValue = cat.name || String(cat.id) || 'All';
-            setActiveCategory(filterValue);
-            if (redirect && ['customization', 'embroidered', 'patches', 'home'].includes(redirect)) {
-              onCategoryClick(cat);
-            } else {
-              setTimeout(() => {
-                document.getElementById('customization-catalog')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-              }, 100);
-            }
-          }} 
-        />
-      )}
+      <LandingCategories 
+        categories={categories} 
+        onCategoryClick={(cat) => {
+          const redirect = cat.redirect_to || cat.redirectTo || '';
+          const filterValue = cat.name || String(cat.id) || 'All';
+          setActiveCategory(filterValue);
+          if (redirect && ['customization', 'embroidered', 'patches', 'home'].includes(redirect)) {
+            onCategoryClick(cat);
+          } else {
+            setTimeout(() => {
+              document.getElementById('customization-catalog')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
+          }
+        }} 
+      />
       <LandingProductGrid 
         title="Trending Now" 
         products={trendingProducts}
@@ -6068,23 +6066,21 @@ function EmbroideredLandingPage({ products, wishlist, toggleWishlist, onNavigate
         onCtaClick={() => { document.getElementById('customization-catalog')?.scrollIntoView({ behavior: 'smooth' }); }}
       />
       <TrustBadges />
-      {activeCategory === 'All' && (
-        <LandingCategories 
-          categories={categories} 
-          onCategoryClick={(cat) => {
-            const redirect = cat.redirect_to || cat.redirectTo || '';
-            const filterValue = cat.name || String(cat.id) || 'All';
-            setActiveCategory(filterValue);
-            if (redirect && ['customization', 'embroidered', 'patches', 'home'].includes(redirect)) {
-              onCategoryClick(cat);
-            } else {
-              setTimeout(() => {
-                document.getElementById('customization-catalog')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-              }, 100);
-            }
-          }} 
-        />
-      )}
+      <LandingCategories 
+        categories={categories} 
+        onCategoryClick={(cat) => {
+          const redirect = cat.redirect_to || cat.redirectTo || '';
+          const filterValue = cat.name || String(cat.id) || 'All';
+          setActiveCategory(filterValue);
+          if (redirect && ['customization', 'embroidered', 'patches', 'home'].includes(redirect)) {
+            onCategoryClick(cat);
+          } else {
+            setTimeout(() => {
+              document.getElementById('customization-catalog')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
+          }
+        }} 
+      />
 
       {/* Campaign Section */}
       <section className="campaign-banner-section container">
@@ -6170,23 +6166,21 @@ function PatchesLandingPage({ products, wishlist, toggleWishlist, onNavigateProd
         onCtaClick={() => { document.getElementById('customization-catalog')?.scrollIntoView({ behavior: 'smooth' }); }}
       />
       <TrustBadges />
-      {activeCategory === 'All' && (
-        <LandingCategories 
-          categories={categories} 
-          onCategoryClick={(cat) => {
-            const redirect = cat.redirect_to || cat.redirectTo || '';
-            const filterValue = cat.name || String(cat.id) || 'All';
-            setActiveCategory(filterValue);
-            if (redirect && ['customization', 'embroidered', 'patches', 'home'].includes(redirect)) {
-              onCategoryClick(cat);
-            } else {
-              setTimeout(() => {
-                document.getElementById('customization-catalog')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-              }, 100);
-            }
-          }} 
-        />
-      )}
+      <LandingCategories 
+        categories={categories} 
+        onCategoryClick={(cat) => {
+          const redirect = cat.redirect_to || cat.redirectTo || '';
+          const filterValue = cat.name || String(cat.id) || 'All';
+          setActiveCategory(filterValue);
+          if (redirect && ['customization', 'embroidered', 'patches', 'home'].includes(redirect)) {
+            onCategoryClick(cat);
+          } else {
+            setTimeout(() => {
+              document.getElementById('customization-catalog')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
+          }
+        }} 
+      />
       <LandingProductGrid 
         title="Trending Now" 
         products={trendingPatches}
