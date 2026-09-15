@@ -19,8 +19,16 @@ class CustomerAddressController extends Controller
 
         $user = $request->user();
 
-        if (!$user || $customer->user_id !== $user->id) {
+        if (!$user) {
+            abort(401, 'Unauthenticated.');
+        }
+
+        if ($customer->user_id !== $user->id && strtolower($customer->email) !== strtolower($user->email)) {
             abort(403, 'Unauthorized action.');
+        }
+
+        if (!$customer->user_id) {
+            $customer->update(['user_id' => $user->id]);
         }
 
         return $customer;
@@ -44,11 +52,11 @@ class CustomerAddressController extends Controller
         return $this->success(new CustomerAddressResource($address));
     }
 
-    public function store(Request $request, string $customerId, StoreAddressRequest $addressRequest): JsonResponse
+    public function store(StoreAddressRequest $request, string $customerId): JsonResponse
     {
         $this->authorizeOwnership($request, $customerId);
 
-        $data = $addressRequest->validated();
+        $data = $request->validated();
 
         if (empty($data['postal_code']) && !empty($data['pincode'])) {
             $data['postal_code'] = $data['pincode'];
@@ -82,12 +90,12 @@ class CustomerAddressController extends Controller
         return $this->success(new CustomerAddressResource($address), 'Address created successfully', 201);
     }
 
-    public function update(Request $request, string $customerId, string $id, UpdateAddressRequest $addressRequest): JsonResponse
+    public function update(UpdateAddressRequest $request, string $customerId, string $id): JsonResponse
     {
         $this->authorizeOwnership($request, $customerId);
 
         $address = CustomerAddress::where('customer_id', $customerId)->findOrFail($id);
-        $data = $addressRequest->validated();
+        $data = $request->validated();
 
         if (empty($data['postal_code']) && !empty($data['pincode'])) {
             $data['postal_code'] = $data['pincode'];

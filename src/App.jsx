@@ -6312,19 +6312,20 @@ function ProfilePage({
         headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
       });
       const pData = await pRes.json();
-      if (pRes.ok && pData.success) {
+      if (pRes.ok && pData.success && pData.data?.id) {
         const customerId = pData.data.id;
         const payload = {
-          first_name: addressFirstName,
-          last_name: addressLastName,
-          phone: addressPhone,
+          first_name: addressFirstName || user?.first_name || 'Customer',
+          last_name: addressLastName || user?.last_name || '',
+          phone: addressPhone || user?.phone || '',
           address_line1: addressLine1,
-          address_line2: addressLine2 || undefined,
+          address_line2: addressLine2 || '',
           city: addressCity,
           state: addressState,
           postal_code: addressPostalCode,
+          pincode: addressPostalCode,
           country: addressCountry || 'India',
-          is_default: addressIsDefault
+          is_default: Boolean(addressIsDefault)
         };
 
         let res;
@@ -6356,12 +6357,15 @@ function ProfilePage({
           setActiveAddressForm(null);
           fetchAddresses();
         } else {
-          alert(data.message || 'Failed to save address');
+          const errMsg = data.message || (data.errors ? Object.values(data.errors).flat().join(', ') : 'Failed to save address');
+          alert(errMsg);
         }
+      } else {
+        alert(pData.message || 'Could not retrieve customer account profile.');
       }
     } catch (err) {
       console.error(err);
-      alert('An error occurred');
+      alert('An error occurred while saving address.');
     }
   };
 
