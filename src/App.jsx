@@ -60,10 +60,47 @@ import {
 } from 'lucide-react';
 import Lenis from 'lenis';
 
-const formatImageUrl = (url) => {
-  if (!url) return '/images/products/placeholder.png';
+const getFallbackProductImage = (categoryName = '', productName = '') => {
+  const catUpper = String(categoryName || '').toUpperCase();
+  const nameUpper = String(productName || '').toUpperCase();
+
+  if (catUpper.includes('PET') || nameUpper.includes('PET') || nameUpper.includes('DOG') || nameUpper.includes('CAT')) {
+    return 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?q=80&w=600&auto=format&fit=crop';
+  }
+  if (catUpper.includes('PORTRAIT') || nameUpper.includes('PORTRAIT') || nameUpper.includes('BABY') || nameUpper.includes('PHOTO')) {
+    return 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=600&auto=format&fit=crop';
+  }
+  if (catUpper.includes('VEHICLE') || catUpper.includes('VECHICLE') || nameUpper.includes('BIKE') || nameUpper.includes('CAR') || nameUpper.includes('AIRPLANE')) {
+    return 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?q=80&w=600&auto=format&fit=crop';
+  }
+  if (catUpper.includes('LOGO') || nameUpper.includes('LOGO') || catUpper.includes('CUSTOM') || nameUpper.includes('CUSTOM')) {
+    return 'https://images.unsplash.com/photo-1618354691373-d851c5c3a990?q=80&w=600&auto=format&fit=crop';
+  }
+  if (catUpper.includes('PATCH') || nameUpper.includes('PATCH')) {
+    return 'https://images.unsplash.com/photo-1549298916-b41d501d3772?q=80&w=600&auto=format&fit=crop';
+  }
+  if (catUpper.includes('JEAN') || catUpper.includes('DENIM') || nameUpper.includes('JEAN') || nameUpper.includes('MOSS') || nameUpper.includes('HAZE')) {
+    return '/images/products/peach_haze_jeans.png';
+  }
+  if (catUpper.includes('ANIME') || nameUpper.includes('ANIME') || nameUpper.includes('NARUTO') || nameUpper.includes('SPIDERMAN') || nameUpper.includes('MARVEL') || nameUpper.includes('SHADOW') || nameUpper.includes('ITACHI')) {
+    return '/images/products/chaos_anime_tee.png';
+  }
+  if (nameUpper.includes('AKATSUKI')) {
+    return '/images/products/akatsuki_cloud_tee.png';
+  }
+  if (nameUpper.includes('DEMON')) {
+    return '/images/products/demon_mask_tee.png';
+  }
+
+  return '/images/products/demon_mask_tee.png';
+};
+
+const formatImageUrl = (url, categoryName = '', productName = '') => {
+  if (!url) return getFallbackProductImage(categoryName, productName);
   let clean = typeof url === 'object' ? (url.url || url.path || url.image_url || '') : String(url).trim();
-  if (!clean) return '/images/products/placeholder.png';
+  if (!clean || clean.includes('placeholder') || clean === 'null' || clean === 'undefined') {
+    return getFallbackProductImage(categoryName, productName);
+  }
 
   clean = clean.replace(/\\/g, '/');
 
@@ -691,10 +728,12 @@ export default function App() {
       .then(data => {
         if (data && data.success && data.data && data.data.length > 0) {
           const mapped = data.data.map(p => {
+            const catName = p.categories?.[0]?.name || p.category || '';
             const rawImg = p.images?.find(img => img.is_primary)?.url 
               || p.images?.[0]?.url 
+              || p.images?.[0]?.path 
               || p.image;
-            const primaryImg = formatImageUrl(rawImg);
+            const primaryImg = formatImageUrl(rawImg, catName, p.name);
             
             let rawTags = [];
             if (Array.isArray(p.tags)) {
@@ -727,7 +766,7 @@ export default function App() {
               desc: p.description || p.short_description || '',
               rating: p.average_rating ? parseFloat(p.average_rating) : 4.8,
               reviewCount: p.reviews_count || 10,
-              thumbnails: p.images?.length > 0 ? p.images.map(img => formatImageUrl(img.url || img.path)) : [primaryImg],
+              thumbnails: p.images?.length > 0 ? p.images.map(img => formatImageUrl(img.url || img.path, catName, p.name)) : [primaryImg],
               variants: p.variants || [],
               stock: p.stock !== null && p.stock !== undefined ? parseInt(p.stock, 10) : (p.variants?.length ? p.variants.reduce((a, b) => a + (parseInt(b.stock, 10) || 0), 0) : 0),
               size_guide_image: p.size_guide_image ? formatImageUrl(p.size_guide_image) : null,
@@ -5003,7 +5042,12 @@ function ProductDetailPage({
               onClick={() => onNavigateProduct(p.id)}
             >
               <div className="product-card-img-wrapper">
-                <img src={p.image} alt={p.name} className="product-card-image" />
+                <img 
+                  src={p.image} 
+                  alt={p.name} 
+                  className="product-card-image" 
+                  onError={(e) => { e.target.onerror = null; e.target.src = '/images/products/demon_mask_tee.png'; }}
+                />
                 <button 
                   className={`product-card-wishlist ${wishlist.includes(p.id) ? 'active' : ''}`}
                   onClick={(e) => {
@@ -5724,7 +5768,12 @@ function FilterableProductsBlock({
               onClick={() => onNavigateProduct(product.id)}
             >
               <div className="product-card-img-wrapper">
-                <img src={product.image} alt={product.name} className="product-card-image" />
+                <img 
+                  src={product.image} 
+                  alt={product.name} 
+                  className="product-card-image" 
+                  onError={(e) => { e.target.onerror = null; e.target.src = '/images/products/demon_mask_tee.png'; }}
+                />
                 <button 
                   className={`product-card-wishlist ${wishlist.includes(product.id) ? 'active' : ''}`}
                   onClick={(e) => {
