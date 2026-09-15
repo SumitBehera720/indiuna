@@ -1429,75 +1429,43 @@ export default function App() {
   };
 
   const handleCategoryClick = (cat) => {
-    const redirect = cat.redirectTo || cat.redirect_to || '';
-    if (redirect === 'customization') {
+    const redirect = String(cat?.redirectTo || cat?.redirect_to || '').toLowerCase().trim();
+    const nameUpper = String(cat?.name || cat?.filter || '').toUpperCase().trim();
+    const slugLower = String(cat?.slug || '').toLowerCase().trim();
+
+    if (redirect === 'customization' || nameUpper.includes('CUSTOMIZ') || slugLower.includes('customiz')) {
       changeView('customization');
       scrollToTop();
-    } else if (redirect === 'embroidered') {
+      return;
+    }
+    
+    if (redirect === 'embroidered' || nameUpper.includes('EMBROIDER') || slugLower.includes('embroider')) {
       changeView('embroidered');
       scrollToTop();
-    } else if (redirect === 'patches') {
+      return;
+    }
+    
+    if (redirect === 'patches' || nameUpper.includes('PATCH') || slugLower.includes('patch')) {
       changeView('patches');
       scrollToTop();
-    } else if (redirect === 'home') {
+      return;
+    }
+
+    if (redirect === 'home') {
       changeView('home');
       scrollToTop();
-    } else if (redirect === 'catalog') {
-      setSelectedCategoryId(null);
-      setSelectedCategoryName(null);
-      setSelectedParentCategoryId('ALL');
-      setSelectedSubCategoryId('ALL');
-      setActiveSubCategory('ALL');
-      setActiveGenderTab('ALL');
-      changeView('home');
-      const catalogEl = document.getElementById('catalog-section');
-      if (catalogEl) setTimeout(() => catalogEl.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
-    } else if (redirect === 'new-arrivals') {
+      return;
+    }
+
+    if (redirect === 'new-arrivals') {
       changeView('home');
       setTimeout(() => document.getElementById('new-arrivals-section')?.scrollIntoView({ behavior: 'smooth' }), 100);
-    } else if (redirect === 'categories') {
-      changeView('home');
-      setTimeout(() => document.getElementById('categories-section')?.scrollIntoView({ behavior: 'smooth' }), 100);
-    } else if (redirect && redirect.startsWith('category:')) {
-      const catName = redirect.replace('category:', '');
-      setSelectedCategoryId(null);
-      setSelectedCategoryName(catName);
-      setSelectedParentCategoryId('ALL');
-      setSelectedSubCategoryId('ALL');
-      setActiveSubCategory(catName.toUpperCase());
-      setActiveGenderTab('ALL');
-      changeView('home');
-      const catalogEl = document.getElementById('catalog-section');
-      if (catalogEl) setTimeout(() => catalogEl.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
-    } else {
-      const catId = cat.id || null;
-      setSelectedCategoryId(catId);
-      setSelectedCategoryName(cat.name || null);
-      if (catId) {
-        const dbCat = dbCategories.find(c => c.id === catId);
-        if (dbCat && dbCat.parent_id) {
-          setSelectedParentCategoryId(dbCat.parent_id);
-          setSelectedSubCategoryId(dbCat.id);
-        } else {
-          setSelectedParentCategoryId(catId);
-          setSelectedSubCategoryId('ALL');
-        }
-        setActiveSubCategory('ALL');
-      } else {
-        const filterVal = (cat.filter || cat.name || 'ALL').toUpperCase();
-        setSelectedParentCategoryId(filterVal);
-        setSelectedSubCategoryId('ALL');
-        setActiveSubCategory(filterVal);
-      }
-      if (cat.gender && ['men', 'women', 'unisex'].includes(cat.gender.toLowerCase())) {
-        setActiveGenderTab(cat.gender.toUpperCase());
-      } else {
-        setActiveGenderTab('ALL');
-      }
-      changeView('home');
-      const catalogEl = document.getElementById('catalog-section');
-      if (catalogEl) setTimeout(() => catalogEl.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+      return;
     }
+
+    // Default fallback for any category: route to customization page
+    changeView('customization');
+    scrollToTop();
   };
 
   const activeProduct = products.find(p => String(p.id) === String(activeProductId)) || products[0];
@@ -1714,12 +1682,9 @@ export default function App() {
                   redirect_to: c.redirect_to,
                   gender: c.gender
                 })) : [
-                  { name: "Oversized T-Shirts", img: "https://images.unsplash.com/photo-1556821840-3a63f95609a7?q=80&w=600&auto=format&fit=crop", filter: "OVERSIZED T-SHIRTS" },
-                  { name: "Regular Fit T-Shirts", img: "https://images.unsplash.com/photo-1618354691373-d851c5c3a990?q=80&w=600&auto=format&fit=crop", filter: "REGULAR FIT T-SHIRTS" },
-                  { name: "Sweatshirts", img: "https://images.unsplash.com/photo-1548199973-03cce0bbc87b?q=80&w=600&auto=format&fit=crop", filter: "SWEATSHIRTS" },
-                  { name: "Shirts", img: "https://images.unsplash.com/photo-1596755094514-f87e34085b2c?q=80&w=600&auto=format&fit=crop", filter: "SHIRTS" },
-                  { name: "New Collections", img: "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?q=80&w=600&auto=format&fit=crop", filter: "NEW COLLECTIONS" },
-                  { name: "Trending Now", img: "https://images.unsplash.com/photo-1556821840-3a63f95609a7?q=80&w=600&auto=format&fit=crop", filter: "TRENDING" }
+                  { name: "CUSTOMIZATION", img: "/images/hero_banner.png", redirect_to: "customization" },
+                  { name: "EMBROIDERED APPAREL", img: "/images/products/peach_haze_jeans.png", redirect_to: "embroidered" },
+                  { name: "PATCHES", img: "/images/streetwear_culture.png", redirect_to: "patches" }
                 ];
                 return displayHomeCats.map((cat, i) => (
                   <div
@@ -1861,203 +1826,7 @@ export default function App() {
             </div>
           </section>
 
-          <section id="catalog-section" className="catalog-section container">
-            <div className="catalog-gender-tabs">
-              {['ALL', 'MEN', 'WOMEN', 'UNISEX'].map((gender) => (
-                <button 
-                  key={gender} 
-                  className={`catalog-gender-tab ${activeGenderTab === gender ? 'active' : ''}`}
-                  onClick={() => { setActiveGenderTab(gender); setSelectedCategoryId(null); setSelectedCategoryName(null); }}
-                >
-                  {gender}
-                </button>
-              ))}
-            </div>
 
-            {selectedCategoryId === null && selectedCategoryName === null && (
-              <div className="catalog-filter-pills">
-                {(() => {
-                  const rootCats = dbCategories.filter(c => c.is_active && !c.parent_id);
-                  const fallbackCats = [...new Set(products.map(p => p.category ? p.category.toUpperCase() : ''))].filter(Boolean);
-                  const parentPills = dbCategories.length > 0
-                    ? [
-                        { id: 'ALL', name: 'ALL' },
-                        ...rootCats.map(c => ({ id: c.id, name: (c.name || '').toUpperCase() }))
-                      ]
-                    : [
-                        { id: 'ALL', name: 'ALL' },
-                        ...fallbackCats.map(name => ({ id: name, name }))
-                      ];
-                  return parentPills.map((sub) => (
-                    <button 
-                      key={sub.id} 
-                      className={`catalog-filter-pill ${selectedParentCategoryId === sub.id ? 'active' : ''}`}
-                      onClick={() => {
-                        setSelectedParentCategoryId(sub.id);
-                        setSelectedSubCategoryId('ALL');
-                        setSelectedCategoryId(null);
-                        setSelectedCategoryName(null);
-                        setActiveSubCategory(sub.id);
-                      }}
-                    >
-                      {sub.name}
-                    </button>
-                  ));
-                })()}
-              </div>
-            )}
-
-            {(selectedCategoryId !== null || selectedCategoryName !== null || selectedSubCategoryId !== 'ALL') && (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '25px' }}>
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', marginBottom: '12px', padding: '6px 16px', backgroundColor: '#111827', color: '#ffffff', borderRadius: '50px', fontSize: '0.8rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-                  <span>Category:</span>
-                  <span style={{ color: 'var(--color-primary)' }}>
-                    {selectedCategoryName || (() => {
-                      const found = dbCategories.find(c => String(c.id) === String(selectedCategoryId) || c.id === selectedParentCategoryId);
-                      return found ? found.name : selectedParentCategoryId;
-                    })()}
-                  </span>
-                  <button 
-                    type="button"
-                    onClick={() => {
-                      setSelectedCategoryId(null);
-                      setSelectedCategoryName(null);
-                      setSelectedParentCategoryId('ALL');
-                      setSelectedSubCategoryId('ALL');
-                      setSelectedFilterCategoryId('ALL');
-                    }}
-                    style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', padding: 0, marginLeft: '4px', display: 'flex', alignItems: 'center' }}
-                    title="Clear Category"
-                  >
-                    <X size={14} />
-                  </button>
-                </div>
-
-                <div className="catalog-filter-pills subcategories-pills-row" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', padding: '10px 15px', backgroundColor: 'var(--color-bg-alt, #f8fafc)', borderRadius: '12px', border: '1px solid var(--color-border, #e2e8f0)', width: 'fit-content' }}>
-                  {[
-                    { id: 'ALL', name: 'ALL' },
-                    { id: 'Oversized T-Shirts', name: 'OVERSIZED T-SHIRT' },
-                    { id: 'Regular Fit T-Shirts', name: 'REGULAR FIT' },
-                    { id: 'Sweatshirts', name: 'SWEATSHIRTS' },
-                    { id: 'Hoodies', name: 'HOODIES' }
-                  ].map((sub) => (
-                    <button 
-                      key={sub.id} 
-                      className={`catalog-filter-pill sub-pill ${selectedFilterCategoryId === sub.id ? 'active' : ''}`}
-                      onClick={() => setSelectedFilterCategoryId(sub.id)}
-                      style={{ fontSize: '0.85rem', padding: '6px 14px', borderRadius: '8px' }}
-                    >
-                      {sub.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div className="product-grid" key={`${activeGenderTab}-${selectedParentCategoryId}-${selectedSubCategoryId}-${selectedFilterCategoryId}-${selectedCategoryId}-${selectedCategoryName}`}>
-              {products
-                .filter(p => {
-                  let matchesGender;
-                  if (activeGenderTab === 'ALL') matchesGender = true;
-                  else if (activeGenderTab === 'UNISEX') matchesGender = p.gender === 'UNISEX';
-                  else matchesGender = p.gender === activeGenderTab || p.gender === 'UNISEX';
-                  if (!matchesGender) return false;
-                  if (selectedCategoryId !== null || selectedCategoryName !== null) {
-                    const catIds = (p.categoryIds || []);
-                    const matchesCatId = selectedCategoryId !== null && (catIds.includes(selectedCategoryId) || catIds.includes(String(selectedCategoryId)));
-                    const matchesCatName = selectedCategoryName !== null && (p.categoryNames || []).some(name => name.toUpperCase() === selectedCategoryName.toUpperCase());
-                    return matchesCatId || matchesCatName;
-                  }
-                  if (selectedParentCategoryId === 'ALL') {
-                    if (selectedFilterCategoryId !== 'ALL') {
-                      return matchProductFitOrTag(p, selectedFilterCategoryId);
-                    }
-                    if (selectedSubCategoryId !== 'ALL') {
-                      return matchProductFitOrTag(p, selectedSubCategoryId);
-                    }
-                    return true;
-                  }
-                  if (selectedParentCategoryId === 'TRENDING') {
-                    const isTrending = (p.subCategories || []).includes('TRENDING') || (p.tag || '').toUpperCase() === 'TRENDING';
-                    if (!isTrending) return false;
-                    return matchProductFitOrTag(p, selectedFilterCategoryId);
-                  }
-                  if (selectedParentCategoryId === 'NEW COLLECTIONS') {
-                    const isNew = (p.subCategories || []).includes('NEW COLLECTIONS') || (p.tag || '').toUpperCase() === 'NEW';
-                    if (!isNew) return false;
-                    return matchProductFitOrTag(p, selectedFilterCategoryId);
-                  }
-                  const isDbCategory = dbCategories.some(c => c.id === selectedParentCategoryId);
-                  if (isDbCategory) {
-                    const resolvedCatIds = p.categoryIds && p.categoryIds.length > 0
-                      ? p.categoryIds
-                      : (() => {
-                          const matched = dbCategories.find(c => c.name.toUpperCase() === (p.category || '').toUpperCase());
-                          return matched ? [matched.id] : [];
-                        })();
-                    if (selectedSubCategoryId !== 'ALL') {
-                      const matchesSub = resolvedCatIds.includes(selectedSubCategoryId) || resolvedCatIds.includes(String(selectedSubCategoryId)) || matchProductFitOrTag(p, selectedSubCategoryId);
-                      if (!matchesSub) return false;
-                    }
-                    if (selectedFilterCategoryId !== 'ALL') {
-                      return matchProductFitOrTag(p, selectedFilterCategoryId);
-                    }
-                    const level2CatIds = dbCategories.filter(c => c.parent_id === selectedParentCategoryId).map(c => c.id);
-                    const allowedIds = [selectedParentCategoryId, ...level2CatIds];
-                    return resolvedCatIds.some(cid => allowedIds.includes(cid) || allowedIds.includes(String(cid))) || matchProductFitOrTag(p, selectedParentCategoryId);
-                  } else {
-                    const matchesCategory = (p.category || '').toUpperCase() === selectedParentCategoryId.toUpperCase() || matchProductFitOrTag(p, selectedParentCategoryId);
-                    if (!matchesCategory) return false;
-                    return matchProductFitOrTag(p, selectedFilterCategoryId);
-                  }
-                })
-                .map((product) => (
-                  <div 
-                    key={product.id} 
-                    className="product-card" 
-                    onClick={() => navigateToProduct(product.id)}
-                  >
-                    <div className="product-card-img-wrapper">
-                      <img src={product.image} alt={product.name} className="product-card-image" />
-                      <button 
-                        className={`product-card-wishlist ${wishlist.includes(product.id) ? 'active' : ''}`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleWishlist(product.id);
-                        }}
-                        aria-label="Add to wishlist"
-                      >
-                        <Heart fill={wishlist.includes(product.id) ? 'currentColor' : 'none'} />
-                      </button>
-                      <span className="product-card-tag">{product.tag}</span>
-                    </div>
-                    <div className="product-card-info">
-                      <span className="product-card-category">{product.category}</span>
-                      <h4 className="product-card-title">{product.name}</h4>
-                      <div className="product-card-rating" style={{ display: 'flex', alignItems: 'center', gap: '6px', margin: '4px 0' }}>
-                        <div className="product-card-stars" style={{ display: 'flex', gap: '2px' }}>
-                          {[...Array(5)].map((_, i) => (
-                            <Star key={i} size={12} className={i < Math.floor(product.rating || 4.8) ? 'star-filled' : 'star-empty'} />
-                          ))}
-                        </div>
-                        <span className="product-card-rating-num" style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{product.rating || '4.8'}</span>
-                      </div>
-                      <div className="product-price-layout">
-                        {product.originalPrice ? (
-                          <div className="product-price-discount-box">
-                            <span className="price-original">₹{product.originalPrice.toLocaleString('en-IN')}</span>
-                            <span className="price-sale">₹{product.price.toLocaleString('en-IN')}</span>
-                            <span className="price-discount-percent">{Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}% OFF</span>
-                          </div>
-                        ) : (
-                          <span className="price-sale-only">₹{product.price.toLocaleString('en-IN')}</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-            </div>
-          </section>
 
           <section className="how-it-works reveal-section" style={{ paddingTop: '40px' }}>
             <div className="container">
