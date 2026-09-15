@@ -206,6 +206,10 @@ export default function App() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Order Success & Tracking Modal States
+  const [placedOrderSuccess, setPlacedOrderSuccess] = useState(null);
+  const [trackingOrderModal, setTrackingOrderModal] = useState(null);
+
   // Carousel & Filtering States
   const [currentAnnouncement, setCurrentAnnouncement] = useState(0);
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -2021,6 +2025,7 @@ export default function App() {
           onLogout={handleLogout}
           onNavigateProduct={navigateToProduct}
           onGoHome={() => { changeView('home'); scrollToTop(); }}
+          onTrackOrder={(order) => setTrackingOrderModal(order)}
         />
       ) : currentView === 'wishlist' ? (
         <WishlistPage 
@@ -2064,6 +2069,7 @@ export default function App() {
           token={token}
           API_BASE={API_BASE}
           onGoHome={() => { changeView('home'); scrollToTop(); }}
+          onOrderSuccess={(orderData) => setPlacedOrderSuccess(orderData)}
           onBack={() => {
             const target = previousView || 'home';
             changeView(target);
@@ -2710,6 +2716,219 @@ export default function App() {
           </div>
         </div>
       </div>
+
+      {/* 18. Animated Order Placed Success Modal */}
+      {placedOrderSuccess && createPortal(
+        <div className="order-modal-overlay animate-fade-in" onClick={() => setPlacedOrderSuccess(null)}>
+          <div className="order-success-card animate-pop-up" onClick={(e) => e.stopPropagation()}>
+            <div className="order-success-icon-wrapper">
+              <div className="order-success-circle-glow"></div>
+              <div className="order-success-circle">
+                <CheckCircle2 size={46} />
+              </div>
+            </div>
+
+            <div className="order-success-badge">
+              <Sparkles size={14} /> ORDER CONFIRMED
+            </div>
+
+            <h2 className="order-success-title">Order Placed Successfully!</h2>
+            <p className="order-success-subtitle">
+              Thank you for shopping with INDIUNA! Your order has been logged &amp; sent for custom embroidery processing.
+            </p>
+
+            <div className="order-success-summary-box">
+              <div className="order-summary-row">
+                <span>Order Number</span>
+                <span className="order-summary-bold">{placedOrderSuccess.order_number || `#ORD-${placedOrderSuccess.id || Math.floor(Math.random()*89999+10000)}`}</span>
+              </div>
+              <div className="order-summary-row">
+                <span>Total Amount</span>
+                <span className="order-summary-bold" style={{ color: 'var(--color-primary)' }}>
+                  ₹{parseFloat(placedOrderSuccess.total || placedOrderSuccess.amount || 0).toLocaleString('en-IN')}
+                </span>
+              </div>
+              <div className="order-summary-row">
+                <span>Payment Method</span>
+                <span className="order-summary-bold" style={{ textTransform: 'uppercase' }}>
+                  {placedOrderSuccess.payment_method === 'cod' ? 'Cash on Delivery' : 'Prepaid (Online)'}
+                </span>
+              </div>
+              <div className="order-summary-row">
+                <span>Estimated Delivery</span>
+                <span className="order-summary-bold">3 - 5 Business Days</span>
+              </div>
+            </div>
+
+            <div className="order-success-actions">
+              <button 
+                type="button"
+                className="btn-solid-red" 
+                onClick={() => {
+                  const currentOrder = placedOrderSuccess;
+                  setPlacedOrderSuccess(null);
+                  setProfileTab('orders');
+                  changeView('profile');
+                  setTrackingOrderModal(currentOrder);
+                }}
+                style={{ width: '100%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '14px', fontSize: '0.9rem' }}
+              >
+                <Package size={18} /> Track Order Progress
+              </button>
+              <button 
+                type="button"
+                className="btn-outline-dark" 
+                onClick={() => {
+                  setPlacedOrderSuccess(null);
+                  changeView('home');
+                  scrollToTop();
+                }}
+                style={{ width: '100%', padding: '12px', fontSize: '0.88rem', border: '1px solid var(--color-border)', borderRadius: '10px', backgroundColor: '#f8fafc', fontWeight: 700, cursor: 'pointer' }}
+              >
+                Continue Shopping
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* 19. Order Progress Tracking Modal */}
+      {trackingOrderModal && createPortal(
+        <div className="order-modal-overlay animate-fade-in" onClick={() => setTrackingOrderModal(null)}>
+          <div className="order-tracking-card animate-scale-up" onClick={(e) => e.stopPropagation()}>
+            <div className="order-tracking-header">
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Package size={20} style={{ color: 'var(--color-primary)' }} />
+                  <h3 style={{ fontSize: '1.05rem', fontWeight: 800, margin: 0, color: 'var(--color-text-dark)' }}>
+                    Order {trackingOrderModal.order_number || `#ORD-${trackingOrderModal.id}`}
+                  </h3>
+                </div>
+                <span style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', display: 'block', marginTop: '2px' }}>
+                  Placed on {new Date(trackingOrderModal.placed_at || trackingOrderModal.created_at || Date.now()).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                </span>
+              </div>
+              <button 
+                type="button"
+                onClick={() => setTrackingOrderModal(null)}
+                style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', padding: '6px', borderRadius: '50%' }}
+                aria-label="Close Tracking Modal"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="order-tracking-body">
+              <div className="tracking-status-banner">
+                <div>
+                  <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--color-text-muted)', fontWeight: 700 }}>Current Status</span>
+                  <h4 style={{ fontSize: '0.98rem', fontWeight: 800, color: 'var(--color-primary)', margin: '2px 0 0 0', textTransform: 'capitalize' }}>
+                    {trackingOrderModal.status || 'Order Placed & Confirmed'}
+                  </h4>
+                </div>
+                <div className="tracking-est-box">
+                  <Clock size={15} />
+                  <span>Est. Delivery: 3-5 Days</span>
+                </div>
+              </div>
+
+              {(() => {
+                const statusLower = String(trackingOrderModal.status || 'pending').toLowerCase();
+                let activeStepIndex = 1; // Default: Confirmed
+                if (statusLower.includes('shipped') || statusLower.includes('dispatch') || statusLower.includes('out_for_delivery')) {
+                  activeStepIndex = 3;
+                } else if (statusLower.includes('processing') || statusLower.includes('customiz') || statusLower.includes('stitching') || statusLower.includes('paid')) {
+                  activeStepIndex = 2;
+                } else if (statusLower.includes('delivered') || statusLower.includes('completed')) {
+                  activeStepIndex = 4;
+                } else if (statusLower.includes('cancel')) {
+                  activeStepIndex = -1;
+                }
+
+                if (activeStepIndex === -1) {
+                  return (
+                    <div style={{ padding: '20px', backgroundColor: '#fef2f2', borderRadius: '12px', border: '1px solid #fecaca', textAlign: 'center', color: '#dc2626' }}>
+                      <h5 style={{ fontWeight: 800, marginBottom: '4px' }}>Order Cancelled</h5>
+                      <p style={{ fontSize: '0.85rem' }}>This order was cancelled. Please contact support if you need assistance.</p>
+                    </div>
+                  );
+                }
+
+                const steps = [
+                  { title: 'Order Placed', desc: 'Received & Logged', icon: ShoppingBag },
+                  { title: 'Confirmed', desc: 'Payment Verified', icon: ShieldCheck },
+                  { title: 'Processing', desc: 'Embroidery Crafting', icon: Scissors },
+                  { title: 'Shipped', desc: 'In Transit', icon: Truck },
+                  { title: 'Delivered', desc: 'Package Delivered', icon: CheckCircle2 }
+                ];
+
+                const progressPercent = (activeStepIndex / (steps.length - 1)) * 100;
+
+                return (
+                  <div className="tracking-stepper-container">
+                    <div className="tracking-line-bg">
+                      <div className="tracking-line-fill" style={{ width: `${progressPercent}%` }}></div>
+                    </div>
+
+                    <div className="tracking-steps-grid">
+                      {steps.map((step, idx) => {
+                        const StepIcon = step.icon;
+                        const isDone = idx <= activeStepIndex;
+                        const isCurrent = idx === activeStepIndex;
+
+                        return (
+                          <div key={idx} className={`tracking-step-item ${isDone ? 'done' : ''} ${isCurrent ? 'current' : ''}`}>
+                            <div className="tracking-step-node">
+                              {isDone ? <Check size={14} /> : <StepIcon size={14} />}
+                            </div>
+                            <span className="tracking-step-title">{step.title}</span>
+                            <span className="tracking-step-desc">{step.desc}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              <div style={{ marginTop: '20px', paddingTop: '18px', borderTop: '1px solid var(--color-border)' }}>
+                <h4 style={{ fontSize: '0.85rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--color-text-dark)', marginBottom: '12px', letterSpacing: '0.04em' }}>
+                  Ordered Items ({trackingOrderModal.items?.length || 1})
+                </h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '180px', overflowY: 'auto' }}>
+                  {(trackingOrderModal.items || []).map((item, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 14px', backgroundColor: 'var(--color-bg-alt, #f8fafc)', borderRadius: '10px', border: '1px solid var(--color-border)' }}>
+                      {item.product_image ? (
+                        <img src={item.product_image} alt={item.product_name} style={{ width: '46px', height: '46px', borderRadius: '8px', objectFit: 'cover' }} />
+                      ) : (
+                        <div style={{ width: '46px', height: '46px', borderRadius: '8px', backgroundColor: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Shirt size={20} /></div>
+                      )}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <h5 style={{ fontSize: '0.85rem', fontWeight: 700, margin: '0 0 2px 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--color-text-dark)' }}>
+                          {item.product_name || 'Custom Product'}
+                        </h5>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Qty: {item.quantity} | Size: {item.variant_label || 'L'}</span>
+                      </div>
+                      <span style={{ fontSize: '0.88rem', fontWeight: 800, color: 'var(--color-text-dark)' }}>
+                        ₹{parseFloat(item.unit_price || 0).toLocaleString('en-IN')}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', padding: '12px 16px', backgroundColor: '#111827', color: '#ffffff', borderRadius: '10px' }}>
+                  <span style={{ fontSize: '0.82rem', fontWeight: 600 }}>Total Order Value</span>
+                  <span style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-primary)' }}>
+                    ₹{parseFloat(trackingOrderModal.total || trackingOrderModal.amount || 0).toLocaleString('en-IN')}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </>
   );
 }
@@ -5923,7 +6142,8 @@ function ProfilePage({
   onLogout, 
   onNavigateProduct, 
   onGoHome,
-  onChangeView
+  onChangeView,
+  onTrackOrder
 }) {
 
   const [activeAddressForm, setActiveAddressForm] = useState(null); // null | 'new' | addressObj
@@ -6651,6 +6871,20 @@ function ProfilePage({
                           </div>
                         ))}
                       </div>
+
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 18px', backgroundColor: 'var(--color-bg-alt, #f8fafc)', borderTop: '1px dashed var(--color-border)', borderRadius: '0 0 12px 12px' }}>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
+                          {order.items?.length || 1} Item(s)
+                        </span>
+                        <button 
+                          type="button"
+                          className="btn-solid-red"
+                          onClick={() => onTrackOrder && onTrackOrder(order)}
+                          style={{ padding: '7px 16px', fontSize: '0.8rem', width: 'auto', display: 'inline-flex', alignItems: 'center', gap: '6px', borderRadius: '8px', cursor: 'pointer' }}
+                        >
+                          <Package size={15} /> Track Order Progress
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -6954,7 +7188,7 @@ function AuthPage({
 /* ==========================================================================
    5. CHECKOUT PAGE COMPONENT
    ========================================================================== */
-function CheckoutPage({ user, token, cart, setCart, getCartTotal, API_BASE, products, onGoHome, onBack }) {
+function CheckoutPage({ user, token, cart, setCart, getCartTotal, API_BASE, products, onGoHome, onBack, onOrderSuccess }) {
   const [email, setEmail] = useState(user?.email || '');
   const [firstName, setFirstName] = useState(user?.first_name || '');
   const [lastName, setLastName] = useState(user?.last_name || '');
@@ -7187,9 +7421,25 @@ function CheckoutPage({ user, token, cart, setCart, getCartTotal, API_BASE, prod
       const orderData = data.data;
 
       if (paymentMethod === 'cod') {
-        alert(`Order placed successfully! Order Number: ${orderData.order_number}`);
+        const successPayload = {
+          ...orderData,
+          total: orderData.total || grandTotal,
+          payment_method: 'cod',
+          items: cart,
+          shipping_address: {
+            first_name: firstName,
+            last_name: lastName,
+            city: city,
+            state: state
+          }
+        };
         setCart([]);
-        onGoHome();
+        if (typeof onOrderSuccess === 'function') {
+          onOrderSuccess(successPayload);
+        } else {
+          alert(`Order placed successfully! Order Number: ${orderData.order_number}`);
+          onGoHome();
+        }
       } else {
         const options = {
           key: orderData.key_id,
@@ -7215,9 +7465,25 @@ function CheckoutPage({ user, token, cart, setCart, getCartTotal, API_BASE, prod
               });
               const verifyData = await verifyRes.json();
               if (verifyRes.ok && verifyData.success) {
-                alert(`Order placed & paid successfully! Order Number: ${orderData.order_number}`);
+                const successPayload = {
+                  ...orderData,
+                  total: orderData.total || grandTotal,
+                  payment_method: 'razorpay',
+                  items: cart,
+                  shipping_address: {
+                    first_name: firstName,
+                    last_name: lastName,
+                    city: city,
+                    state: state
+                  }
+                };
                 setCart([]);
-                onGoHome();
+                if (typeof onOrderSuccess === 'function') {
+                  onOrderSuccess(successPayload);
+                } else {
+                  alert(`Order placed & paid successfully! Order Number: ${orderData.order_number}`);
+                  onGoHome();
+                }
               } else {
                 alert(verifyData.message || 'Signature verification failed');
               }
