@@ -81,7 +81,11 @@ export default function CategoriesPage() {
     if (!form.name.trim()) return toast.error('Category name is required');
     setSaving(true);
     try {
-      const payload = { ...form, parent_id: form.parent_id || null };
+      const payload = { 
+        ...form, 
+        parent_id: form.parent_id || null,
+        show_in_pages: form.show_in_pages || 'none'
+      };
       if (editing) {
         await api.put(`/admin/categories/${editing.id}`, payload);
         toast.success('Category updated');
@@ -139,6 +143,36 @@ export default function CategoriesPage() {
     },
 
     { key: 'products_count', header: 'Products', sortable: true },
+    {
+      key: 'show_in_pages',
+      header: 'Show in Pages',
+      render: (item: CategoryItem) => {
+        const pages = item.show_in_pages && item.show_in_pages !== 'none'
+          ? item.show_in_pages.split(',').map(s => s.trim().toLowerCase()).filter(Boolean)
+          : [];
+        if (pages.length === 0) {
+          return <span className="text-[11px] text-surface-400 italic">None</span>;
+        }
+        const badgeMap: Record<string, { label: string; color: string }> = {
+          home: { label: 'Home', color: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' },
+          customization: { label: 'Custom', color: 'bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' },
+          embroidered: { label: 'Embroidered', color: 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
+          patches: { label: 'Patches', color: 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' },
+        };
+        return (
+          <div className="flex flex-wrap gap-1">
+            {pages.map(p => {
+              const info = badgeMap[p] || { label: p, color: 'bg-surface-100 text-surface-700 dark:bg-surface-800 dark:text-surface-300' };
+              return (
+                <span key={p} className={`text-[10px] px-1.5 py-0.5 rounded-md font-medium ${info.color}`}>
+                  {info.label}
+                </span>
+              );
+            })}
+          </div>
+        );
+      },
+    },
     {
       key: 'is_active',
       header: 'Status',
@@ -300,7 +334,9 @@ export default function CategoriesPage() {
                     { id: 'embroidered', label: 'Embroidered Page' },
                     { id: 'patches', label: 'Patches Page' }
                   ].map(pageOpt => {
-                    const selectedList = form.show_in_pages ? form.show_in_pages.split(',') : [];
+                    const selectedList = form.show_in_pages && form.show_in_pages !== 'none'
+                      ? form.show_in_pages.split(',').map(s => s.trim().toLowerCase()).filter(Boolean)
+                      : [];
                     const isChecked = selectedList.includes(pageOpt.id);
                     return (
                       <label key={pageOpt.id} className="flex items-center gap-2 text-sm text-surface-700 dark:text-surface-300 cursor-pointer select-none">
@@ -308,13 +344,13 @@ export default function CategoriesPage() {
                           type="checkbox"
                           checked={isChecked}
                           onChange={(e) => {
-                            let newList;
+                            let newList: string[];
                             if (e.target.checked) {
-                              newList = [...selectedList, pageOpt.id];
+                              newList = Array.from(new Set([...selectedList, pageOpt.id]));
                             } else {
                               newList = selectedList.filter(x => x !== pageOpt.id);
                             }
-                            setForm({ ...form, show_in_pages: newList.join(',') });
+                            setForm({ ...form, show_in_pages: newList.length > 0 ? newList.join(',') : 'none' });
                           }}
                           className="rounded border-surface-300 dark:border-surface-700 text-primary-600 focus:ring-primary-500"
                         />

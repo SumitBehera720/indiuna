@@ -29,6 +29,7 @@ class UpdateCategoryRequest extends FormRequest
             'banner' => ['sometimes', 'nullable', 'string', 'max:500'],
             'redirect_to' => ['sometimes', 'nullable', 'string', 'max:500'],
             'show_in_pages' => ['sometimes', 'nullable', 'string', 'max:500'],
+            'gender' => ['sometimes', 'nullable', 'string', 'max:50'],
         ];
     }
 

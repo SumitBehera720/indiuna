@@ -26,6 +26,7 @@ class StoreCategoryRequest extends FormRequest
             'banner' => ['nullable', 'string', 'max:500'],
             'redirect_to' => ['nullable', 'string', 'max:500'],
             'show_in_pages' => ['nullable', 'string', 'max:500'],
+            'gender' => ['nullable', 'string', 'max:50'],
         ];
     }
 

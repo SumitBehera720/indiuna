@@ -5134,99 +5134,223 @@ button {
   }
 }
 
-/* ==========================================================================
-   CAMPAIGN BANNER SECTION (EMBROIDERED APPAREL EXCLUSIVE)
-   ========================================================================== */
-.campaign-banner-section {
-  padding: 40px 0;
+/* Multi-slide Hero Slider for Landing Pages */
+.landing-hero-slider {
+  position: relative;
+  width: 100%;
+  height: 60vh;
+  min-height: 420px;
+  overflow: hidden;
+  background-color: #080808;
 }
 
-.campaign-banner-card {
-  background-color: var(--color-bg-dark);
-  border-radius: 12px;
-  overflow: hidden;
-  position: relative;
-  min-height: 420px;
+.landing-hero-slide {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.8s cubic-bezier(0.25, 1, 0.5, 1);
   display: flex;
   align-items: center;
-}
-
-.campaign-banner-bg {
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 55%;
-  height: 100%;
-  background-size: cover;
-  background-position: center;
   z-index: 1;
 }
 
-.campaign-banner-bg::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, #000000 0%, rgba(0, 0, 0, 0.4) 50%, rgba(0, 0, 0, 0) 100%);
+.landing-hero-slide.active {
+  opacity: 1;
+  pointer-events: auto;
   z-index: 2;
 }
 
-.campaign-banner-content {
-  width: 50%;
-  padding: 60px;
-  position: relative;
-  z-index: 3;
-  color: var(--color-text-light);
+.landing-hero-slide .landing-hero-bg {
+  transform: scale(1.03);
+  transition: transform 6s ease;
 }
 
-.campaign-badge-red {
+.landing-hero-slide.active .landing-hero-bg {
+  transform: scale(1);
+}
+
+.landing-hero-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+  background-color: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.landing-hero-arrow:hover {
   background-color: var(--color-primary);
-  color: var(--color-text-light);
-  font-family: var(--font-heading);
-  font-size: 0.65rem;
-  font-weight: 700;
-  padding: 4px 10px;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  display: inline-block;
-  margin-bottom: 20px;
-  border-radius: 2px;
+  border-color: var(--color-primary);
+  color: #ffffff;
+  transform: translateY(-50%) scale(1.08);
 }
 
-.campaign-banner-title {
-  font-family: var(--font-heading);
-  font-weight: 900;
-  font-size: 2.8rem;
-  letter-spacing: -0.01em;
-  text-transform: uppercase;
-  margin-bottom: 12px;
+.landing-hero-arrow.left {
+  left: 24px;
 }
 
-.campaign-banner-desc {
-  font-size: 0.95rem;
-  color: #cccccc;
-  margin-bottom: 30px;
-  line-height: 1.6;
+.landing-hero-arrow.right {
+  right: 24px;
 }
 
-@media (max-width: 992px) {
-  .campaign-banner-card {
-    flex-direction: column;
-    height: auto;
+.landing-hero-dots {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 10px;
+  z-index: 10;
+}
+
+/* Campaign Banner Multi-Slide Support (Image-Only Showcase) */
+.campaign-banner-section {
+  padding: 30px 0;
+  width: 100%;
+}
+
+.campaign-banner-section .section-title-new {
+  margin-bottom: 24px;
+}
+
+@media (max-width: 768px) {
+  .campaign-banner-section .section-title-new {
+    text-align: center;
+    margin-bottom: 16px;
+    font-size: 1.5rem;
   }
-  .campaign-banner-bg {
-    position: relative;
-    width: 100%;
-    height: 300px;
+}
+
+.campaign-slider-wrapper {
+  position: relative;
+  width: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+  display: grid;
+  grid-template-areas: "slide";
+  background-color: transparent;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+.campaign-slide {
+  grid-area: slide;
+  width: 100%;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.6s cubic-bezier(0.25, 1, 0.5, 1);
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  display: block;
+}
+
+.campaign-slide.active {
+  opacity: 1;
+  pointer-events: auto;
+  z-index: 2;
+}
+
+.campaign-banner-picture {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.campaign-banner-img {
+  width: 100%;
+  height: clamp(220px, 32vw, 440px);
+  object-fit: cover;
+  display: block;
+  border-radius: 12px;
+  transition: transform 0.4s ease;
+}
+
+.campaign-slide:hover .campaign-banner-img {
+  transform: scale(1.015);
+}
+
+.campaign-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+  background-color: rgba(0, 0, 0, 0.45);
+  color: #ffffff;
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.campaign-arrow:hover {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #ffffff;
+  transform: translateY(-50%) scale(1.08);
+}
+
+.campaign-arrow.left {
+  left: 20px;
+}
+
+.campaign-arrow.right {
+  right: 20px;
+}
+
+.campaign-dots {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  z-index: 10;
+}
+
+@media (max-width: 768px) {
+  .landing-hero-slider {
+    height: 52vh;
+    min-height: 340px;
   }
-  .campaign-banner-bg::before {
-    background: linear-gradient(0deg, #000000 0%, rgba(0,0,0,0) 100%);
+  .landing-hero-arrow {
+    display: none;
   }
-  .campaign-banner-content {
-    width: 100%;
-    padding: 40px;
+  .campaign-banner-img {
+    height: clamp(170px, 45vw, 260px);
+    border-radius: 8px;
+  }
+  .campaign-slider-wrapper {
+    border-radius: 8px;
+  }
+  .campaign-arrow {
+    width: 34px;
+    height: 34px;
+    font-size: 0.95rem;
+  }
+  .campaign-arrow.left {
+    left: 8px;
+  }
+  .campaign-arrow.right {
+    right: 8px;
   }
 }
 
@@ -6511,17 +6635,64 @@ button {
 }
 
 
-/* Custom smooth horizontal touch/wheel scroll across the website */
-[class*="-slider"],
-[class*="-carousel"],
-[class*="-track"],
-[class*="-pills"],
-[class*="-thumbnails"],
-.catalog-filter-pills,
+/* Swipeable banners and interactive image sliders: permit vertical scrolling and capture horizontal swipe smoothly */
+.custom-hero-section,
+.landing-hero-slider,
+.fresh-drops-slider-container,
+.new-arrivals-carousel-outer,
+.new-arrivals-carousel-viewport,
+.campaign-banner-section,
+.campaign-slider-wrapper,
+.product-main-preview,
+.fullscreen-image-overlay {
+  touch-action: pan-y !important;
+  -webkit-user-select: none !important;
+  user-select: none !important;
+  -webkit-user-drag: none !important;
+  user-drag: none !important;
+  cursor: grab;
+}
+
+.custom-hero-section:active,
+.landing-hero-slider:active,
+.campaign-slider-wrapper:active,
+.fresh-drops-slider-container:active,
+.product-main-preview:active {
+  cursor: grabbing;
+}
+
+/* Prevent native image drag ghost from cancelling touch/swipe gestures */
+img,
+.campaign-banner-img,
+.hero-slide-bg,
+.fresh-drops-image,
+.landing-hero-bg,
+.main-preview-img {
+  -webkit-user-drag: none !important;
+  -khtml-user-drag: none !important;
+  -moz-user-drag: none !important;
+  -o-user-drag: none !important;
+  user-drag: none !important;
+  -webkit-user-select: none !important;
+  user-select: none !important;
+  pointer-events: auto;
+}
+
+/* Horizontal scrollable containers: enable seamless finger panning and scrolling */
 .product-thumbnails-list,
-.catalog-gender-tabs {
+.catalog-filter-pills,
+.catalog-gender-tabs,
+.subnav-container,
+.sub-navbar-track,
+.catalog-view-subnav,
+.testimonials-grid,
+.info-size-table-wrapper,
+[class*="-pills"],
+[class*="-thumbnails"] {
+  touch-action: pan-x pan-y !important;
   -webkit-overflow-scrolling: touch !important;
   overscroll-behavior-x: contain !important;
+  scroll-behavior: smooth;
 }
 
 /* Desktop Category Size - Prominent Extra Large Showcase */

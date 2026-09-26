@@ -8,6 +8,7 @@ use App\Http\Requests\Api\V1\Banner\UpdateBannerRequest;
 use App\Http\Resources\BannerResource;
 use App\Models\Banner;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class BannerController extends Controller
 {
@@ -15,9 +16,16 @@ class BannerController extends Controller
         private readonly Banner $banner,
     ) {}
 
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        $banners = $this->banner->orderBy('sort_order')->paginate(15);
+        $limit = (int) $request->input('limit', $request->input('per_page', 100));
+        $query = $this->banner->query();
+
+        if ($request->filled('position')) {
+            $query->where('position', $request->query('position'));
+        }
+
+        $banners = $query->orderBy('sort_order')->paginate($limit);
 
         return $this->paginated($banners, BannerResource::class);
     }

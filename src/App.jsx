@@ -208,34 +208,47 @@ const getFallbackCategoriesForPage = (pageType) => {
 
 const filterCategoryList = (cats, pageType, rootNames, keywords) => {
   const pageKey = (pageType || '').toLowerCase();
-  const targetSubcatNames = PAGE_SUBCATEGORY_MAP[pageKey] || [];
-  const parentRoot = (cats || []).find(p => rootNames.includes((p.name || '').trim().toUpperCase()));
+  
+  // If no DB categories loaded at all, use default fallbacks
+  if (!cats || cats.length === 0) {
+    return getFallbackCategoriesForPage(pageType);
+  }
+
+  const parentRoot = (cats || []).find(p => rootNames.some(rn => (p.name || '').trim().toUpperCase() === rn));
 
   const matchedFromDb = (cats || []).filter(c => {
+    // 1. Must be active
     if (c.is_active === false || String(c.is_active) === '0') return false;
+
+    // 2. Do not show the root category itself in its subcategory section
     const nameUpper = (c.name || '').trim().toUpperCase();
     if (rootNames.includes(nameUpper)) return false;
 
+    // 3. STRICT show_in_pages check from Admin
+    if (c.show_in_pages !== undefined && c.show_in_pages !== null) {
+      const raw = String(c.show_in_pages).trim().toLowerCase();
+      // If admin explicitly selected no pages ('none' or empty), strictly do NOT show
+      if (!raw || raw === 'none') {
+        return false;
+      }
+      const pages = raw.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+      return pages.includes(pageKey);
+    }
+
+    // 4. Fallback only for legacy DB rows where show_in_pages was never configured
+    const targetSubcatNames = PAGE_SUBCATEGORY_MAP[pageKey] || [];
     const matchesExplicitTarget = targetSubcatNames.some(tName => tName.toUpperCase() === nameUpper);
-    const pages = (c.show_in_pages || '').split(',').map(s => s.trim().toLowerCase());
-    const matchesPage = pages.includes(pageKey);
     const matchesName = keywords.some(kw => nameUpper.includes(kw));
     const matchesParent = parentRoot && String(c.parent_id) === String(parentRoot.id);
 
-    return matchesExplicitTarget || matchesPage || matchesName || matchesParent;
+    return matchesExplicitTarget || matchesName || matchesParent;
   });
 
-  const existingNamesUpper = matchedFromDb.map(c => (c.name || '').trim().toUpperCase());
-  const missingCategories = targetSubcatNames
-    .filter(tName => !existingNamesUpper.includes(tName.toUpperCase()))
-    .map((tName, idx) => ({
-      id: `${pageKey}-fallback-${idx + 1}`,
-      name: tName,
-      image: DEFAULT_SUBCATEGORY_IMAGES[tName] || '/images/hero_banner.png',
-      redirect_to: pageKey
-    }));
+  // Sort by sort_order
+  matchedFromDb.sort((a, b) => (Number(a.sort_order) || 0) - (Number(b.sort_order) || 0));
 
-  return [...matchedFromDb, ...missingCategories];
+  // If categories exist in the database, return ONLY the DB categories that match
+  return matchedFromDb;
 };
 
 const matchProductFitOrTag = (p, filterValue) => {
@@ -505,25 +518,91 @@ export default function App() {
   const [orderLoading, setOrderLoading] = useState(false);
   const [addressLoading, setAddressLoading] = useState(false);
 
+  // Swipe handlers for Homepage Hero Slider
+  const heroTouchStartX = useRef(0);
+  const heroTouchStartY = useRef(0);
+  const heroTouchEndX = useRef(0);
+  const heroTouchEndY = useRef(0);
+
+  const handleHeroTouchStart = (e) => {
+    if (e.touches && e.touches[0]) {
+      heroTouchStartX.current = e.touches[0].clientX;
+      heroTouchStartY.current = e.touches[0].clientY;
+      heroTouchEndX.current = e.touches[0].clientX;
+      heroTouchEndY.current = e.touches[0].clientY;
+    }
+  };
+
+  const handleHeroTouchMove = (e) => {
+    if (e.touches && e.touches[0]) {
+      heroTouchEndX.current = e.touches[0].clientX;
+      heroTouchEndY.current = e.touches[0].clientY;
+    }
+  };
+
+  const handleHeroTouchEnd = (e, totalSlides) => {
+    let endX = heroTouchEndX.current;
+    let endY = heroTouchEndY.current;
+    if (e && e.changedTouches && e.changedTouches.length > 0) {
+      endX = e.changedTouches[0].clientX;
+      endY = e.changedTouches[0].clientY;
+    }
+    const diffX = heroTouchStartX.current - endX;
+    const diffY = heroTouchStartY.current - endY;
+    const total = (typeof totalSlides === 'number') ? totalSlides : 3;
+    if (Math.abs(diffX) > 24 && Math.abs(diffX) > Math.abs(diffY)) {
+      if (diffX > 0) {
+        setCurrentSlide(prev => (prev + 1) % total);
+      } else {
+        setCurrentSlide(prev => (prev - 1 + total) % total);
+      }
+    }
+  };
+
   // Swipe & Wheel gesture handlers for Fresh Drops
-  const [freshTouchStartX, setFreshTouchStartX] = useState(0);
-  const [freshTouchEndX, setFreshTouchEndX] = useState(0);
+  const freshTouchStartX = useRef(0);
+  const freshTouchStartY = useRef(0);
+  const freshTouchEndX = useRef(0);
+  const freshTouchEndY = useRef(0);
+  const freshDropsMoved = useRef(false);
   const freshWheelCooldown = useRef(false);
 
   const handleFreshTouchStart = (e) => {
-    setFreshTouchStartX(e.targetTouches[0].clientX);
-    setFreshTouchEndX(e.targetTouches[0].clientX); // initialize endX to startX
+    freshDropsMoved.current = false;
+    if (e.touches && e.touches[0]) {
+      freshTouchStartX.current = e.touches[0].clientX;
+      freshTouchStartY.current = e.touches[0].clientY;
+      freshTouchEndX.current = e.touches[0].clientX;
+      freshTouchEndY.current = e.touches[0].clientY;
+    }
   };
 
   const handleFreshTouchMove = (e) => {
-    setFreshTouchEndX(e.targetTouches[0].clientX);
+    if (e.touches && e.touches[0]) {
+      freshTouchEndX.current = e.touches[0].clientX;
+      freshTouchEndY.current = e.touches[0].clientY;
+      if (Math.abs(freshTouchStartX.current - e.touches[0].clientX) > 10) {
+        freshDropsMoved.current = true;
+      }
+    }
   };
 
-  const handleFreshTouchEnd = () => {
-    if (freshTouchStartX - freshTouchEndX > 40) {
-      setFreshDropsSlide(prev => (prev + 1) % 3);
-    } else if (freshTouchStartX - freshTouchEndX < -40) {
-      setFreshDropsSlide(prev => (prev - 1 + 3) % 3);
+  const handleFreshTouchEnd = (e, totalSlides = 3) => {
+    let endX = freshTouchEndX.current;
+    let endY = freshTouchEndY.current;
+    if (e && e.changedTouches && e.changedTouches.length > 0) {
+      endX = e.changedTouches[0].clientX;
+      endY = e.changedTouches[0].clientY;
+    }
+    const diffX = freshTouchStartX.current - endX;
+    const diffY = freshTouchStartY.current - endY;
+    const total = (typeof totalSlides === 'number') ? totalSlides : 3;
+    if (Math.abs(diffX) > 24 && Math.abs(diffX) > Math.abs(diffY)) {
+      if (diffX > 0) {
+        setFreshDropsSlide(prev => (prev + 1) % total);
+      } else {
+        setFreshDropsSlide(prev => (prev - 1 + total) % total);
+      }
     }
   };
 
@@ -544,27 +623,41 @@ export default function App() {
   };
 
   // Swipe, Drag & Wheel gesture handlers for New Arrivals
-  const [arrivalsTouchStartX, setArrivalsTouchStartX] = useState(0);
-  const [arrivalsTouchEndX, setArrivalsTouchEndX] = useState(0);
+  const arrivalsTouchStartX = useRef(0);
+  const arrivalsTouchStartY = useRef(0);
+  const arrivalsTouchEndX = useRef(0);
+  const arrivalsTouchEndY = useRef(0);
+  const arrivalsMoved = useRef(false);
   const arrivalsWheelCooldown = useRef(false);
   const arrivalsMouseDown = useRef(false);
   const arrivalsMouseStartX = useRef(0);
   const arrivalsMouseDragDist = useRef(0);
 
   const handleArrivalsTouchStart = (e) => {
-    setArrivalsTouchStartX(e.targetTouches[0].clientX);
-    setArrivalsTouchEndX(e.targetTouches[0].clientX); // initialize endX to startX
+    arrivalsMoved.current = false;
+    arrivalsTouchStartX.current = e.targetTouches[0].clientX;
+    arrivalsTouchStartY.current = e.targetTouches[0].clientY;
+    arrivalsTouchEndX.current = e.targetTouches[0].clientX;
+    arrivalsTouchEndY.current = e.targetTouches[0].clientY;
   };
 
   const handleArrivalsTouchMove = (e) => {
-    setArrivalsTouchEndX(e.targetTouches[0].clientX);
+    arrivalsTouchEndX.current = e.targetTouches[0].clientX;
+    arrivalsTouchEndY.current = e.targetTouches[0].clientY;
+    if (Math.abs(arrivalsTouchStartX.current - e.targetTouches[0].clientX) > 10) {
+      arrivalsMoved.current = true;
+    }
   };
 
   const handleArrivalsTouchEnd = () => {
-    if (arrivalsTouchStartX - arrivalsTouchEndX > 40) {
-      setNewArrivalsIndex(prev => prev + 1);
-    } else if (arrivalsTouchStartX - arrivalsTouchEndX < -40) {
-      setNewArrivalsIndex(prev => prev - 1);
+    const diffX = arrivalsTouchStartX.current - arrivalsTouchEndX.current;
+    const diffY = arrivalsTouchStartY.current - arrivalsTouchEndY.current;
+    if (Math.abs(diffX) > 28 && Math.abs(diffX) > Math.abs(diffY)) {
+      if (diffX > 0) {
+        setNewArrivalsIndex(prev => prev + 1);
+      } else {
+        setNewArrivalsIndex(prev => prev - 1);
+      }
     }
   };
 
@@ -585,6 +678,7 @@ export default function App() {
   };
 
   const handleArrivalsMouseDown = (e) => {
+    arrivalsMoved.current = false;
     arrivalsMouseDown.current = true;
     arrivalsMouseStartX.current = e.clientX;
     arrivalsMouseDragDist.current = 0;
@@ -593,14 +687,17 @@ export default function App() {
   const handleArrivalsMouseMove = (e) => {
     if (!arrivalsMouseDown.current) return;
     arrivalsMouseDragDist.current = e.clientX - arrivalsMouseStartX.current;
+    if (Math.abs(arrivalsMouseDragDist.current) > 10) {
+      arrivalsMoved.current = true;
+    }
   };
 
   const handleArrivalsMouseUp = () => {
     if (!arrivalsMouseDown.current) return;
     arrivalsMouseDown.current = false;
-    if (arrivalsMouseDragDist.current < -40) {
+    if (arrivalsMouseDragDist.current < -30) {
       setNewArrivalsIndex(prev => prev + 1);
-    } else if (arrivalsMouseDragDist.current > 40) {
+    } else if (arrivalsMouseDragDist.current > 30) {
       setNewArrivalsIndex(prev => prev - 1);
     }
   };
@@ -872,7 +969,7 @@ export default function App() {
   // Hydrate banners from Backend API
   const [dbBanners, setDbBanners] = useState([]);
   useEffect(() => {
-    fetch(`${API_BASE}/banners`)
+    fetch(`${API_BASE}/banners?limit=100`)
       .then(res => res.json())
       .then(data => {
         if (data && data.success && data.data) {
@@ -1781,76 +1878,80 @@ export default function App() {
 
       {currentView === 'home' ? (
         <>
-          <section className="custom-hero-section">
-            {(() => {
-              const dbHeroBanners = dbBanners.filter(b => (b.position === 'home_hero' || !b.position) && b.is_active !== false);
-              const activeHeroSlides = dbHeroBanners.length > 0
-                ? dbHeroBanners.map(b => ({
-                    image: formatImageUrl(b.image_url),
-                    tag: b.subtitle || 'Premium Embroidered',
-                    title: b.title || 'Streetwear Crafted\nto Stand Out.',
-                    cta: b.link_text || 'Shop Now'
-                  }))
-                : [
-                    {
-                      image: '/images/hero_banner.png',
-                      tag: 'Premium Embroidered',
-                      title: 'Streetwear Crafted\nto Stand Out.',
-                      cta: 'Shop New Arrivals'
-                    },
-                    {
-                      image: 'https://images.unsplash.com/photo-1578932750294-f5075e85f44a?q=80&w=1400&auto=format&fit=crop',
-                      tag: 'Limited Drop',
-                      title: 'Artistry in\nEvery Stitch.',
-                      cta: 'Explore Drop'
-                    },
-                    {
-                      image: 'https://images.unsplash.com/photo-1556821840-3a63f95609a7?q=80&w=1400&auto=format&fit=crop',
-                      tag: 'Custom Customs',
-                      title: 'Your Design,\nOur Craft.',
-                      cta: 'Start Designing'
-                    }
-                  ];
-              
-              const activeIndex = currentSlide % activeHeroSlides.length;
+          {(() => {
+            const dbHeroBanners = dbBanners.filter(b => (b.position === 'home_hero' || !b.position) && b.is_active !== false);
+            const activeHeroSlides = dbHeroBanners.length > 0
+              ? dbHeroBanners.map(b => ({
+                  image: formatImageUrl(b.image_url),
+                  tag: b.subtitle || 'Premium Embroidered',
+                  title: b.title || 'Streetwear Crafted\nto Stand Out.',
+                  cta: b.link_text || 'Shop Now'
+                }))
+              : [
+                  {
+                    image: '/images/hero_banner.png',
+                    tag: 'Premium Embroidered',
+                    title: 'Streetwear Crafted\nto Stand Out.',
+                    cta: 'Shop New Arrivals'
+                  },
+                  {
+                    image: 'https://images.unsplash.com/photo-1578932750294-f5075e85f44a?q=80&w=1400&auto=format&fit=crop',
+                    tag: 'Limited Drop',
+                    title: 'Artistry in\nEvery Stitch.',
+                    cta: 'Explore Drop'
+                  },
+                  {
+                    image: 'https://images.unsplash.com/photo-1556821840-3a63f95609a7?q=80&w=1400&auto=format&fit=crop',
+                    tag: 'Custom Customs',
+                    title: 'Your Design,\nOur Craft.',
+                    cta: 'Start Designing'
+                  }
+                ];
+            
+            const activeIndex = currentSlide % activeHeroSlides.length;
 
-              return (
-                <>
-                  {activeHeroSlides.map((slide, idx) => (
+            return (
+              <section 
+                className="custom-hero-section"
+                onTouchStart={handleHeroTouchStart}
+                onTouchMove={handleHeroTouchMove}
+                onTouchEnd={(e) => handleHeroTouchEnd(e, activeHeroSlides.length)}
+                onTouchCancel={(e) => handleHeroTouchEnd(e, activeHeroSlides.length)}
+              >
+                {activeHeroSlides.map((slide, idx) => (
+                  <div
+                    key={idx}
+                    className={`hero-slide ${activeIndex === idx ? 'active' : ''}`}
+                  >
                     <div
-                      key={idx}
-                      className={`hero-slide ${activeIndex === idx ? 'active' : ''}`}
-                    >
-                      <div
-                        className="hero-slide-bg"
-                        style={{ backgroundImage: `url('${slide.image}')` }}
-                      />
-                      <div className="hero-slide-overlay" />
-                      <div className="hero-slide-content container">
-                        <span className="hero-slide-tag">{slide.tag}</span>
-                        <h1 className="hero-slide-title">
-                          {(slide.title || '').split('\n').map((line, li) => (
-                            <span key={li}>{line}<br /></span>
-                          ))}
-                        </h1>
-                        <button className="hero-slide-cta">{slide.cta}</button>
-                      </div>
+                      className="hero-slide-bg"
+                      style={{ backgroundImage: `url('${slide.image}')` }}
+                    />
+                    <div className="hero-slide-overlay" />
+                    <div className="hero-slide-content container">
+                      <span className="hero-slide-tag">{slide.tag}</span>
+                      <h1 className="hero-slide-title">
+                        {(slide.title || '').split('\n').map((line, li) => (
+                          <span key={li}>{line}<br /></span>
+                        ))}
+                      </h1>
+                      <button className="hero-slide-cta">{slide.cta}</button>
                     </div>
-                  ))}
-                  <div className="hero-dots">
-                    {activeHeroSlides.map((_, i) => (
-                      <button
-                        key={i}
-                        className={`hero-dot ${activeIndex === i ? 'active' : ''}`}
-                        onClick={() => setCurrentSlide(i)}
-                        aria-label={`Slide ${i+1}`}
-                      />
-                    ))}
                   </div>
-                </>
-              );
-            })()}
-          </section>
+                ))}
+                <div className="hero-dots">
+                  {activeHeroSlides.map((_, i) => (
+                    <button
+                      key={i}
+                      className={`hero-dot ${activeIndex === i ? 'active' : ''}`}
+                      onClick={() => setCurrentSlide(i)}
+                      aria-label={`Slide ${i+1}`}
+                    />
+                  ))}
+                </div>
+              </section>
+            );
+          })()}
 
           <TrustBadges />
 
@@ -1858,7 +1959,17 @@ export default function App() {
             <h2 className="categories-main-title">CATEGORIES</h2>
             <div className="categories-grid-new">
               {(() => {
-                const homeCats = dbCategories.filter(c => (c.is_active !== false && String(c.is_active) !== '0') && (!c.show_in_pages || c.show_in_pages.split(',').includes('home')));
+                const homeCats = dbCategories.filter(c => {
+                  if (c.is_active === false || String(c.is_active) === '0') return false;
+                  if (c.show_in_pages !== undefined && c.show_in_pages !== null) {
+                    const raw = String(c.show_in_pages).trim().toLowerCase();
+                    if (!raw || raw === 'none') return false;
+                    const pages = raw.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+                    return pages.includes('home');
+                  }
+                  return !c.parent_id;
+                });
+                homeCats.sort((a, b) => (Number(a.sort_order) || 0) - (Number(b.sort_order) || 0));
                 const displayHomeCats = homeCats.length > 0 ? homeCats.map(c => ({
                   id: c.id,
                   name: c.name,
@@ -1894,7 +2005,8 @@ export default function App() {
               className="fresh-drops-slider-container"
               onTouchStart={handleFreshTouchStart}
               onTouchMove={handleFreshTouchMove}
-              onTouchEnd={handleFreshTouchEnd}
+              onTouchEnd={(e) => handleFreshTouchEnd(e, 3)}
+              onTouchCancel={(e) => handleFreshTouchEnd(e, 3)}
               onWheel={handleFreshWheel}
             >
               {[
@@ -1917,7 +2029,10 @@ export default function App() {
                 <div 
                   key={idx} 
                   className={`fresh-drops-slide ${freshDropsSlide === idx ? 'active' : ''}`}
-                  onClick={() => navigateToProduct(slide.productId)}
+                  onClick={() => {
+                    if (freshDropsMoved.current) return;
+                    navigateToProduct(slide.productId);
+                  }}
                 >
                   <div 
                     className="fresh-drops-image" 
@@ -1982,7 +2097,10 @@ export default function App() {
                       <div 
                         key={idx} 
                         className={`new-arrival-item-card-pop ${isActive ? 'active' : ''}`}
-                        onClick={() => navigateToProduct(targetProduct.id)}
+                        onClick={() => {
+                          if (arrivalsMoved.current) return;
+                          navigateToProduct(targetProduct.id);
+                        }}
                       >
                         <div className="new-arrival-image-wrapper">
                           <img src={targetProduct.image} alt={targetProduct.name} className="new-arrival-image" />
@@ -4348,6 +4466,58 @@ function ProductDetailPage({
     if (product) setActiveImage(product.image);
   }, [product]);
 
+  // Touch gesture handlers for Product Image Gallery / Slider
+  const galleryMoved = useRef(false);
+  const galleryTouchStartX = useRef(0);
+  const galleryTouchStartY = useRef(0);
+  const galleryTouchEndX = useRef(0);
+  const galleryTouchEndY = useRef(0);
+
+  const handleGalleryTouchStart = (e) => {
+    galleryMoved.current = false;
+    if (e.touches && e.touches[0]) {
+      galleryTouchStartX.current = e.touches[0].clientX;
+      galleryTouchStartY.current = e.touches[0].clientY;
+      galleryTouchEndX.current = e.touches[0].clientX;
+      galleryTouchEndY.current = e.touches[0].clientY;
+    }
+  };
+
+  const handleGalleryTouchMove = (e) => {
+    if (e.touches && e.touches[0]) {
+      galleryTouchEndX.current = e.touches[0].clientX;
+      galleryTouchEndY.current = e.touches[0].clientY;
+      if (Math.abs(galleryTouchStartX.current - e.touches[0].clientX) > 10) {
+        galleryMoved.current = true;
+      }
+    }
+  };
+
+  const handleGalleryTouchEnd = (e) => {
+    let endX = galleryTouchEndX.current;
+    let endY = galleryTouchEndY.current;
+    if (e && e.changedTouches && e.changedTouches.length > 0) {
+      endX = e.changedTouches[0].clientX;
+      endY = e.changedTouches[0].clientY;
+    }
+    const diffX = galleryTouchStartX.current - endX;
+    const diffY = galleryTouchStartY.current - endY;
+    if (Math.abs(diffX) > 24 && Math.abs(diffX) > Math.abs(diffY)) {
+      if (!product || !product.thumbnails || product.thumbnails.length <= 1) return;
+      const currentIdx = product.thumbnails.indexOf(activeImage);
+      const safeIdx = currentIdx >= 0 ? currentIdx : 0;
+      if (diffX > 0) {
+        // Swipe left -> next image
+        const nextIdx = (safeIdx + 1) % product.thumbnails.length;
+        setActiveImage(product.thumbnails[nextIdx]);
+      } else {
+        // Swipe right -> prev image
+        const prevIdx = (safeIdx - 1 + product.thumbnails.length) % product.thumbnails.length;
+        setActiveImage(product.thumbnails[prevIdx]);
+      }
+    }
+  };
+
   useEffect(() => {
     if (API_BASE && product?.id) {
       // Fetch Reviews
@@ -4599,8 +4769,25 @@ function ProductDetailPage({
       <div className="product-detail-grid">
         {/* Left Column: Image Gallery */}
         <div className="product-gallery-container">
-          <div className="product-main-preview" onClick={() => setIsFullscreenImageOpen(true)} style={{ cursor: 'pointer' }}>
-            <img src={activeImage} alt={product.name} className="main-preview-img" />
+          <div 
+            className="product-main-preview" 
+            onClick={() => {
+              if (galleryMoved.current) return;
+              setIsFullscreenImageOpen(true);
+            }} 
+            onTouchStart={handleGalleryTouchStart}
+            onTouchMove={handleGalleryTouchMove}
+            onTouchEnd={handleGalleryTouchEnd}
+            onTouchCancel={handleGalleryTouchEnd}
+            style={{ cursor: 'pointer' }}
+          >
+            <img 
+              src={activeImage} 
+              alt={product.name} 
+              className="main-preview-img" 
+              draggable={false}
+              onDragStart={(e) => e.preventDefault()}
+            />
           </div>
           <div className="product-thumbnails-list">
             {product.thumbnails.map((thumb, idx) => (
@@ -5325,7 +5512,14 @@ function ProductDetailPage({
       {isFullscreenImageOpen && (
         <div 
           className="fullscreen-image-overlay"
-          onClick={() => setIsFullscreenImageOpen(false)}
+          onClick={() => {
+            if (galleryMoved.current) return;
+            setIsFullscreenImageOpen(false);
+          }}
+          onTouchStart={handleGalleryTouchStart}
+          onTouchMove={handleGalleryTouchMove}
+          onTouchEnd={handleGalleryTouchEnd}
+          onTouchCancel={handleGalleryTouchEnd}
         >
           <button 
             className="fullscreen-image-close"
@@ -5339,6 +5533,8 @@ function ProductDetailPage({
             alt={product.name} 
             className="fullscreen-image-el"
             onClick={(e) => e.stopPropagation()} 
+            draggable={false}
+            onDragStart={(e) => e.preventDefault()}
           />
         </div>
       )}
@@ -5400,23 +5596,401 @@ function ProductDetailPage({
 }
 
 /* ==========================================================================
-   SHARED LANDING PAGE HERO COMPONENT
+   SHARED LANDING PAGE HERO SLIDER COMPONENT
    ========================================================================== */
-function LandingPageHero({ tag, title, desc, image, ctaText, onGoHome, onCtaClick }) {
+function LandingPageHeroSlider({ slides = [], onGoHome, defaultFallback = null, onDefaultCtaClick = null }) {
+  const [currentIdx, setCurrentIdx] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+  const heroTouchStartX = useRef(0);
+  const heroTouchStartY = useRef(0);
+  const heroTouchEndX = useRef(0);
+  const heroTouchEndY = useRef(0);
+
+  const activeSlides = (slides && slides.length > 0)
+    ? slides
+    : (defaultFallback ? [defaultFallback] : []);
+
+  useEffect(() => {
+    if (activeSlides.length <= 1 || isPaused) return;
+    const interval = setInterval(() => {
+      setCurrentIdx(prev => (prev + 1) % activeSlides.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [activeSlides.length, isPaused]);
+
+  if (activeSlides.length === 0) return null;
+
+  const handlePrev = (e) => {
+    if (e && e.stopPropagation) e.stopPropagation();
+    setCurrentIdx(prev => (prev - 1 + activeSlides.length) % activeSlides.length);
+  };
+
+  const handleNext = (e) => {
+    if (e && e.stopPropagation) e.stopPropagation();
+    setCurrentIdx(prev => (prev + 1) % activeSlides.length);
+  };
+
+  const isSwiping = useRef(false);
+
+  const handleTouchStart = (e) => {
+    isSwiping.current = false;
+    if (e.touches && e.touches[0]) {
+      heroTouchStartX.current = e.touches[0].clientX;
+      heroTouchStartY.current = e.touches[0].clientY;
+      heroTouchEndX.current = e.touches[0].clientX;
+      heroTouchEndY.current = e.touches[0].clientY;
+    }
+  };
+
+  const handleTouchMove = (e) => {
+    if (e.touches && e.touches[0]) {
+      heroTouchEndX.current = e.touches[0].clientX;
+      heroTouchEndY.current = e.touches[0].clientY;
+      if (Math.abs(heroTouchStartX.current - e.touches[0].clientX) > 10) {
+        isSwiping.current = true;
+      }
+    }
+  };
+
+  const handleTouchEnd = (e) => {
+    let endX = heroTouchEndX.current;
+    let endY = heroTouchEndY.current;
+    if (e && e.changedTouches && e.changedTouches.length > 0) {
+      endX = e.changedTouches[0].clientX;
+      endY = e.changedTouches[0].clientY;
+    }
+    const diffX = heroTouchStartX.current - endX;
+    const diffY = heroTouchStartY.current - endY;
+    if (Math.abs(diffX) > 24 && Math.abs(diffX) > Math.abs(diffY)) {
+      if (diffX > 0) {
+        handleNext();
+      } else {
+        handlePrev();
+      }
+    }
+  };
+
+  const handleCtaClick = (slide) => {
+    if (isSwiping.current) return;
+    if (slide.link_url) {
+      if (slide.link_url.startsWith('#')) {
+        const el = document.getElementById(slide.link_url.replace('#', ''));
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth' });
+          return;
+        }
+      } else if (slide.link_url.startsWith('http://') || slide.link_url.startsWith('https://')) {
+        window.open(slide.link_url, '_blank', 'noopener,noreferrer');
+        return;
+      }
+    }
+    if (onDefaultCtaClick) {
+      onDefaultCtaClick();
+    } else {
+      document.getElementById('customization-catalog')?.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   return (
-    <section className="landing-hero-section">
-      <div className="landing-hero-bg" style={{ backgroundImage: `url('${image}')` }} />
-      <div className="landing-hero-overlay" />
-      <div className="landing-hero-content container">
-        {onGoHome && (
-          <button className="landing-hero-home-btn" onClick={onGoHome}>
-            <ArrowLeft size={18} style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: '4px' }} /> Back to Home
+    <section 
+      className="landing-hero-section landing-hero-slider"
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchEnd}
+    >
+      {activeSlides.map((slide, idx) => {
+        const isActive = (currentIdx % activeSlides.length) === idx;
+        const imgUrl = slide.image_url ? formatImageUrl(slide.image_url) : (slide.image || '/images/hero_banner.png');
+        const slideTag = slide.subtitle || slide.tag;
+        const slideTitle = slide.title || '';
+        const slideDesc = slide.description || slide.desc;
+        const slideCta = slide.link_text || slide.ctaText || 'Shop Now';
+
+        return (
+          <div 
+            key={slide.id || idx} 
+            className={`landing-hero-slide ${isActive ? 'active' : ''}`}
+          >
+            <div 
+              className="landing-hero-bg" 
+              style={{ backgroundImage: `url('${imgUrl}')` }} 
+            />
+            <div className="landing-hero-overlay" />
+            <div className="landing-hero-content container">
+              {onGoHome && (
+                <button className="landing-hero-home-btn" onClick={onGoHome}>
+                  <ArrowLeft size={18} style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: '4px' }} /> Back to Home
+                </button>
+              )}
+              {slideTag && (
+                <span className="landing-hero-tag" style={{ marginTop: onGoHome ? '10px' : '0' }}>
+                  {slideTag}
+                </span>
+              )}
+              <h1 className="landing-hero-title">
+                {slideTitle.split('\n').map((line, li) => (
+                  <span key={li}>{line}<br /></span>
+                ))}
+              </h1>
+              {slideDesc && <p className="landing-hero-desc">{slideDesc}</p>}
+              <button className="landing-hero-cta" onClick={() => handleCtaClick(slide)}>
+                {slideCta}
+              </button>
+            </div>
+          </div>
+        );
+      })}
+
+      {activeSlides.length > 1 && (
+        <>
+          <button 
+            className="slider-arrow-btn left landing-hero-arrow" 
+            onClick={handlePrev}
+            aria-label="Previous Slide"
+          >
+            ←
           </button>
+          <button 
+            className="slider-arrow-btn right landing-hero-arrow" 
+            onClick={handleNext}
+            aria-label="Next Slide"
+          >
+            →
+          </button>
+          <div className="hero-dots landing-hero-dots">
+            {activeSlides.map((_, i) => (
+              <button
+                key={i}
+                className={`hero-dot ${(currentIdx % activeSlides.length) === i ? 'active' : ''}`}
+                onClick={() => setCurrentIdx(i)}
+                aria-label={`Slide ${i + 1}`}
+              />
+            ))}
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+
+function LandingPageHero({ tag, title, desc, image, ctaText, onGoHome, onCtaClick, slides }) {
+  if (slides && slides.length > 0) {
+    return <LandingPageHeroSlider slides={slides} onGoHome={onGoHome} onDefaultCtaClick={onCtaClick} />;
+  }
+  return (
+    <LandingPageHeroSlider 
+      defaultFallback={{ tag, title, desc, image, ctaText }}
+      onGoHome={onGoHome}
+      onDefaultCtaClick={onCtaClick}
+    />
+  );
+}
+
+/* ==========================================================================
+   SHARED CAMPAIGN BANNER SLIDER COMPONENT
+   ========================================================================== */
+function CampaignBannerSlider({ slides = [], defaultFallback = null, onDefaultCtaClick = null, title = null }) {
+  const [currentIdx, setCurrentIdx] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+  const touchStartX = useRef(0);
+  const touchStartY = useRef(0);
+  const touchEndX = useRef(0);
+  const touchEndY = useRef(0);
+
+  const activeSlides = (slides && slides.length > 0)
+    ? slides
+    : (defaultFallback ? [defaultFallback] : []);
+
+  useEffect(() => {
+    if (activeSlides.length <= 1 || isPaused) return;
+    const interval = setInterval(() => {
+      setCurrentIdx(prev => (prev + 1) % activeSlides.length);
+    }, 5500);
+    return () => clearInterval(interval);
+  }, [activeSlides.length, isPaused]);
+
+  if (activeSlides.length === 0) return null;
+
+  const handlePrev = (e) => {
+    if (e && e.stopPropagation) e.stopPropagation();
+    setCurrentIdx(prev => (prev - 1 + activeSlides.length) % activeSlides.length);
+  };
+
+  const handleNext = (e) => {
+    if (e && e.stopPropagation) e.stopPropagation();
+    setCurrentIdx(prev => (prev + 1) % activeSlides.length);
+  };
+
+  const isSwiping = useRef(false);
+  const pointerStartX = useRef(0);
+  const pointerStartY = useRef(0);
+  const isPointerDown = useRef(false);
+
+  const handleTouchStart = (e) => {
+    isSwiping.current = false;
+    if (e.touches && e.touches[0]) {
+      touchStartX.current = e.touches[0].clientX;
+      touchStartY.current = e.touches[0].clientY;
+      touchEndX.current = e.touches[0].clientX;
+      touchEndY.current = e.touches[0].clientY;
+    }
+  };
+
+  const handleTouchMove = (e) => {
+    if (e.touches && e.touches[0]) {
+      touchEndX.current = e.touches[0].clientX;
+      touchEndY.current = e.touches[0].clientY;
+      if (Math.abs(touchStartX.current - e.touches[0].clientX) > 10) {
+        isSwiping.current = true;
+      }
+    }
+  };
+
+  const handleTouchEnd = (e) => {
+    let endX = touchEndX.current;
+    let endY = touchEndY.current;
+    if (e && e.changedTouches && e.changedTouches.length > 0) {
+      endX = e.changedTouches[0].clientX;
+      endY = e.changedTouches[0].clientY;
+    }
+    const diffX = touchStartX.current - endX;
+    const diffY = touchStartY.current - endY;
+    if (Math.abs(diffX) > 24 && Math.abs(diffX) > Math.abs(diffY)) {
+      if (diffX > 0) {
+        handleNext();
+      } else {
+        handlePrev();
+      }
+    }
+  };
+
+  const handlePointerDown = (e) => {
+    if (e.button !== 0 && e.pointerType === 'mouse') return;
+    isPointerDown.current = true;
+    pointerStartX.current = e.clientX;
+    pointerStartY.current = e.clientY;
+  };
+
+  const handlePointerUp = (e) => {
+    if (!isPointerDown.current) return;
+    isPointerDown.current = false;
+    const diffX = pointerStartX.current - e.clientX;
+    const diffY = pointerStartY.current - e.clientY;
+    if (Math.abs(diffX) > 24 && Math.abs(diffX) > Math.abs(diffY)) {
+      isSwiping.current = true;
+      if (diffX > 0) {
+        handleNext();
+      } else {
+        handlePrev();
+      }
+    }
+  };
+
+  const handlePointerCancel = () => {
+    isPointerDown.current = false;
+  };
+
+  const handleCtaClick = (slide) => {
+    if (isSwiping.current) return;
+    if (slide.link_url) {
+      if (slide.link_url.startsWith('#')) {
+        const el = document.getElementById(slide.link_url.replace('#', ''));
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth' });
+          return;
+        }
+      } else if (slide.link_url.startsWith('http://') || slide.link_url.startsWith('https://')) {
+        window.open(slide.link_url, '_blank', 'noopener,noreferrer');
+        return;
+      }
+    }
+    if (onDefaultCtaClick) {
+      onDefaultCtaClick();
+    } else {
+      document.getElementById('customization-catalog')?.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  return (
+    <section 
+      className="campaign-banner-section container"
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
+    >
+      {title && <h2 className="section-title-new">{title}</h2>}
+      <div 
+        className="campaign-slider-wrapper"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchEnd}
+        onPointerDown={handlePointerDown}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerCancel}
+      >
+        {activeSlides.map((slide, idx) => {
+          const isActive = (currentIdx % activeSlides.length) === idx;
+          const imgUrl = slide.image_url ? formatImageUrl(slide.image_url) : (slide.image || 'https://images.unsplash.com/photo-1578932750294-f5075e85f44a?q=80&w=1000&auto=format&fit=crop');
+          const mobileImgUrl = slide.mobile_image_url ? formatImageUrl(slide.mobile_image_url) : null;
+
+          return (
+            <div 
+              key={slide.id || idx}
+              className={`campaign-slide ${isActive ? 'active' : ''}`}
+              onClick={() => handleCtaClick(slide)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleCtaClick(slide); }}
+              aria-label={slide.title || `Campaign Banner ${idx + 1}`}
+            >
+              <picture className="campaign-banner-picture">
+                {mobileImgUrl && (
+                  <source media="(max-width: 768px)" srcSet={mobileImgUrl} />
+                )}
+                <img 
+                  src={imgUrl} 
+                  alt={slide.title || 'Campaign Banner'} 
+                  className="campaign-banner-img" 
+                  loading={idx === 0 ? 'eager' : 'lazy'}
+                  draggable={false}
+                  onDragStart={(e) => e.preventDefault()}
+                />
+              </picture>
+            </div>
+          );
+        })}
+
+        {activeSlides.length > 1 && (
+          <>
+            <button 
+              className="slider-arrow-btn left campaign-arrow" 
+              onClick={handlePrev}
+              aria-label="Previous Campaign"
+            >
+              ←
+            </button>
+            <button 
+              className="slider-arrow-btn right campaign-arrow" 
+              onClick={handleNext}
+              aria-label="Next Campaign"
+            >
+              →
+            </button>
+            <div className="hero-dots campaign-dots">
+              {activeSlides.map((_, i) => (
+                <button
+                  key={i}
+                  className={`hero-dot ${(currentIdx % activeSlides.length) === i ? 'active' : ''}`}
+                  onClick={(e) => { e.stopPropagation(); setCurrentIdx(i); }}
+                  aria-label={`Slide ${i + 1}`}
+                />
+              ))}
+            </div>
+          </>
         )}
-        <span className="landing-hero-tag" style={{ marginTop: onGoHome ? '10px' : '0' }}>{tag}</span>
-        <h1 className="landing-hero-title">{title}</h1>
-        <p className="landing-hero-desc">{desc}</p>
-        <button className="landing-hero-cta" onClick={onCtaClick}>{ctaText}</button>
       </div>
     </section>
   );
@@ -5459,8 +6033,10 @@ function LandingProductGrid({ title, products, onNavigateProduct }) {
   const [noAnim, setNoAnim] = useState(false);
 
   // Swipe, Drag & Wheel gesture handlers
-  const [touchStartX, setTouchStartX] = useState(0);
-  const [touchEndX, setTouchEndX] = useState(0);
+  const touchStartX = useRef(0);
+  const touchStartY = useRef(0);
+  const touchEndX = useRef(0);
+  const touchEndY = useRef(0);
   const wheelCooldown = useRef(false);
   const isMouseDown = useRef(false);
   const mouseStartX = useRef(0);
@@ -5494,21 +6070,33 @@ function LandingProductGrid({ title, products, onNavigateProduct }) {
   }, [carouselIndex]);
 
   // Touch gesture handlers
+  const landingMoved = useRef(false);
+
   const handleTouchStart = (e) => {
-    setTouchStartX(e.targetTouches[0].clientX);
-    setTouchEndX(e.targetTouches[0].clientX);
+    landingMoved.current = false;
+    touchStartX.current = e.targetTouches[0].clientX;
+    touchStartY.current = e.targetTouches[0].clientY;
+    touchEndX.current = e.targetTouches[0].clientX;
+    touchEndY.current = e.targetTouches[0].clientY;
   };
 
   const handleTouchMove = (e) => {
-    setTouchEndX(e.targetTouches[0].clientX);
+    touchEndX.current = e.targetTouches[0].clientX;
+    touchEndY.current = e.targetTouches[0].clientY;
+    if (Math.abs(touchStartX.current - e.targetTouches[0].clientX) > 10) {
+      landingMoved.current = true;
+    }
   };
 
   const handleTouchEnd = () => {
-    const diff = touchStartX - touchEndX;
-    if (diff > 40) {
-      setCarouselIndex(prev => prev + 1);
-    } else if (diff < -40) {
-      setCarouselIndex(prev => prev - 1);
+    const diffX = touchStartX.current - touchEndX.current;
+    const diffY = touchStartY.current - touchEndY.current;
+    if (Math.abs(diffX) > 28 && Math.abs(diffX) > Math.abs(diffY)) {
+      if (diffX > 0) {
+        setCarouselIndex(prev => prev + 1);
+      } else {
+        setCarouselIndex(prev => prev - 1);
+      }
     }
   };
 
@@ -5531,6 +6119,7 @@ function LandingProductGrid({ title, products, onNavigateProduct }) {
 
   // Mouse drag handlers
   const handleMouseDown = (e) => {
+    landingMoved.current = false;
     isMouseDown.current = true;
     mouseStartX.current = e.clientX;
     mouseDragDist.current = 0;
@@ -5539,14 +6128,17 @@ function LandingProductGrid({ title, products, onNavigateProduct }) {
   const handleMouseMove = (e) => {
     if (!isMouseDown.current) return;
     mouseDragDist.current = e.clientX - mouseStartX.current;
+    if (Math.abs(mouseDragDist.current) > 10) {
+      landingMoved.current = true;
+    }
   };
 
   const handleMouseUp = () => {
     if (!isMouseDown.current) return;
     isMouseDown.current = false;
-    if (mouseDragDist.current < -40) {
+    if (mouseDragDist.current < -30) {
       setCarouselIndex(prev => prev + 1);
-    } else if (mouseDragDist.current > 40) {
+    } else if (mouseDragDist.current > 30) {
       setCarouselIndex(prev => prev - 1);
     }
   };
@@ -5604,7 +6196,7 @@ function LandingProductGrid({ title, products, onNavigateProduct }) {
                   key={idx} 
                   className={`new-arrival-item-card-pop ${isActive ? 'active' : ''}`}
                   onClick={(e) => {
-                    if (Math.abs(mouseDragDist.current) > 10) {
+                    if (landingMoved.current || Math.abs(mouseDragDist.current) > 10) {
                       e.preventDefault();
                       e.stopPropagation();
                       mouseDragDist.current = 0;
@@ -6014,13 +6606,7 @@ function CustomizationLandingPage({ products, wishlist, toggleWishlist, onNaviga
   const customizationCatIds = customizationCats.map(c => String(c.id));
   const customizationCatNames = customizationCats.map(c => c.name.toUpperCase());
 
-  const heroBanner = dbBanners.find(b => b.position === 'customization_hero' && String(b.is_active) !== '0' && b.is_active !== false);
-
-  const heroTag = heroBanner?.subtitle || "Custom Customs";
-  const heroTitle = heroBanner?.title || "Your design, our premium craftsmanship.";
-  const heroDesc = heroBanner?.description || "Upload custom logos, sketches or text, and our embroidery specialists will recreate them on high-weight cotton styles.";
-  const heroImage = heroBanner?.image_url ? formatImageUrl(heroBanner.image_url) : "https://images.unsplash.com/photo-1605647540924-852290f6b0d5?q=80&w=1200&auto=format&fit=crop";
-  const heroCta = heroBanner?.link_text || "Start Customizing";
+  const heroBanners = dbBanners.filter(b => b.position === 'customization_hero' && String(b.is_active) !== '0' && b.is_active !== false);
 
   const categories = customizationCats.length > 0 ? customizationCats.map(c => ({
     id: c.id,
@@ -6046,14 +6632,17 @@ function CustomizationLandingPage({ products, wishlist, toggleWishlist, onNaviga
 
   return (
     <div className="landing-page animate-fade-in">
-      <LandingPageHero 
-        tag={heroTag}
-        title={heroTitle}
-        desc={heroDesc}
-        image={heroImage}
-        ctaText={heroCta}
+      <LandingPageHeroSlider 
+        slides={heroBanners}
+        defaultFallback={{
+          tag: "Custom Customs",
+          title: "Your design, our premium craftsmanship.",
+          desc: "Upload custom logos, sketches or text, and our embroidery specialists will recreate them on high-weight cotton styles.",
+          image: "https://images.unsplash.com/photo-1605647540924-852290f6b0d5?q=80&w=1200&auto=format&fit=crop",
+          ctaText: "Start Customizing"
+        }}
         onGoHome={onGoHome}
-        onCtaClick={() => { document.getElementById('customization-catalog')?.scrollIntoView({ behavior: 'smooth' }); }}
+        onDefaultCtaClick={() => { document.getElementById('customization-catalog')?.scrollIntoView({ behavior: 'smooth' }); }}
       />
       <TrustBadges />
       <LandingCategories 
@@ -6099,20 +6688,8 @@ function EmbroideredLandingPage({ products, wishlist, toggleWishlist, onNavigate
   const embroideredCatIds = embroideredCats.map(c => String(c.id));
   const embroideredCatNames = embroideredCats.map(c => c.name.toUpperCase());
 
-  const heroBanner = dbBanners.find(b => b.position === 'embroidered_hero' && String(b.is_active) !== '0' && b.is_active !== false);
-  const campaignBanner = dbBanners.find(b => b.position === 'campaign_embroidered' && String(b.is_active) !== '0' && b.is_active !== false);
-
-  const heroTag = heroBanner?.subtitle || "Premium Embroidered";
-  const heroTitle = heroBanner?.title || "Heavyweight fabrics, high-density stitches.";
-  const heroDesc = heroBanner?.description || "Explore our collection of custom anime graphics, cyberpunk typography, and classic streetwear art embroidered to perfection.";
-  const heroImage = heroBanner?.image_url ? formatImageUrl(heroBanner.image_url) : "/images/hero_banner.png";
-  const heroCta = heroBanner?.link_text || "Shop New Collection";
-
-  const campaignBadge = campaignBanner?.subtitle || "CAMPAIGN 2026";
-  const campaignTitle = campaignBanner?.title || "Fearless Stitches";
-  const campaignDesc = campaignBanner?.description || "Built for durability, designed to stand out. Our latest collection challenges standard embroidery styles with thick, multi-layered 3D stitches.";
-  const campaignImage = campaignBanner?.image_url ? formatImageUrl(campaignBanner.image_url) : "https://images.unsplash.com/photo-1578932750294-f5075e85f44a?q=80&w=1000&auto=format&fit=crop";
-  const campaignCta = campaignBanner?.link_text || "Explore Campaign";
+  const heroBanners = dbBanners.filter(b => b.position === 'embroidered_hero' && String(b.is_active) !== '0' && b.is_active !== false);
+  const campaignBanners = dbBanners.filter(b => b.position === 'campaign_embroidered' && String(b.is_active) !== '0' && b.is_active !== false);
 
   const categories = embroideredCats.length > 0 ? embroideredCats.map(c => ({
     id: c.id,
@@ -6138,14 +6715,17 @@ function EmbroideredLandingPage({ products, wishlist, toggleWishlist, onNavigate
 
   return (
     <div className="landing-page animate-fade-in">
-      <LandingPageHero 
-        tag={heroTag}
-        title={heroTitle}
-        desc={heroDesc}
-        image={heroImage}
-        ctaText={heroCta}
+      <LandingPageHeroSlider 
+        slides={heroBanners}
+        defaultFallback={{
+          tag: "Premium Embroidered",
+          title: "Heavyweight fabrics, high-density stitches.",
+          desc: "Explore our collection of custom anime graphics, cyberpunk typography, and classic streetwear art embroidered to perfection.",
+          image: "/images/hero_banner.png",
+          ctaText: "Shop New Collection"
+        }}
         onGoHome={onGoHome}
-        onCtaClick={() => { document.getElementById('customization-catalog')?.scrollIntoView({ behavior: 'smooth' }); }}
+        onDefaultCtaClick={() => { document.getElementById('customization-catalog')?.scrollIntoView({ behavior: 'smooth' }); }}
       />
       <TrustBadges />
       <LandingCategories 
@@ -6164,18 +6744,19 @@ function EmbroideredLandingPage({ products, wishlist, toggleWishlist, onNavigate
         }} 
       />
 
-      {/* Campaign Section */}
-      <section className="campaign-banner-section container">
-        <div className="campaign-banner-card">
-          <div className="campaign-banner-content">
-            <span className="campaign-badge-red">{campaignBadge}</span>
-            <h2 className="campaign-banner-title">{campaignTitle}</h2>
-            <p className="campaign-banner-desc">{campaignDesc}</p>
-            <button className="btn-solid-red" onClick={() => { document.getElementById('customization-catalog')?.scrollIntoView({ behavior: 'smooth' }); }}>{campaignCta}</button>
-          </div>
-          <div className="campaign-banner-bg" style={{ backgroundImage: `url('${campaignImage}')` }} />
-        </div>
-      </section>
+      {/* Campaign Slider Section */}
+      <CampaignBannerSlider 
+        title="Fresh Drops"
+        slides={campaignBanners}
+        defaultFallback={{
+          badge: "CAMPAIGN 2026",
+          title: "Fearless Stitches",
+          desc: "Built for durability, designed to stand out. Our latest collection challenges standard embroidery styles with thick, multi-layered 3D stitches.",
+          image: "https://images.unsplash.com/photo-1578932750294-f5075e85f44a?q=80&w=1000&auto=format&fit=crop",
+          ctaText: "Explore Campaign"
+        }}
+        onDefaultCtaClick={() => { document.getElementById('customization-catalog')?.scrollIntoView({ behavior: 'smooth' }); }}
+      />
 
       <LandingProductGrid 
         title="New Arrivals" 
@@ -6205,13 +6786,7 @@ function PatchesLandingPage({ products, wishlist, toggleWishlist, onNavigateProd
   const patchesCatIds = patchesCats.map(c => String(c.id));
   const patchesCatNames = patchesCats.map(c => c.name.toUpperCase());
 
-  const heroBanner = dbBanners.find(b => b.position === 'patches_hero' && String(b.is_active) !== '0' && b.is_active !== false);
-
-  const heroTag = heroBanner?.subtitle || "Premium Stitched Patches";
-  const heroTitle = heroBanner?.title || "Personalize anything instantly.";
-  const heroDesc = heroBanner?.description || "High-density collectible thread art patches with premium merrowed borders. Designed to be sewn or ironed onto bags, jackets, or denim.";
-  const heroImage = heroBanner?.image_url ? formatImageUrl(heroBanner.image_url) : "https://images.unsplash.com/photo-1578932750294-f5075e85f44a?q=80&w=1200&auto=format&fit=crop";
-  const heroCta = heroBanner?.link_text || "View All Patches";
+  const heroBanners = dbBanners.filter(b => b.position === 'patches_hero' && String(b.is_active) !== '0' && b.is_active !== false);
 
   const categories = patchesCats.length > 0 ? patchesCats.map(c => ({
     id: c.id,
@@ -6238,14 +6813,17 @@ function PatchesLandingPage({ products, wishlist, toggleWishlist, onNavigateProd
 
   return (
     <div className="landing-page animate-fade-in">
-      <LandingPageHero 
-        tag={heroTag}
-        title={heroTitle}
-        desc={heroDesc}
-        image={heroImage}
-        ctaText={heroCta}
+      <LandingPageHeroSlider 
+        slides={heroBanners}
+        defaultFallback={{
+          tag: "Premium Stitched Patches",
+          title: "Personalize anything instantly.",
+          desc: "High-density collectible thread art patches with premium merrowed borders. Designed to be sewn or ironed onto bags, jackets, or denim.",
+          image: "https://images.unsplash.com/photo-1578932750294-f5075e85f44a?q=80&w=1200&auto=format&fit=crop",
+          ctaText: "View All Patches"
+        }}
         onGoHome={onGoHome}
-        onCtaClick={() => { document.getElementById('customization-catalog')?.scrollIntoView({ behavior: 'smooth' }); }}
+        onDefaultCtaClick={() => { document.getElementById('customization-catalog')?.scrollIntoView({ behavior: 'smooth' }); }}
       />
       <TrustBadges />
       <LandingCategories 
