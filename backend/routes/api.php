@@ -211,6 +211,7 @@ Route::prefix('v1')->group(function () {
         // Reviews
         Route::apiResource('reviews', ReviewController::class)->only(['index', 'show', 'destroy']);
         Route::post('reviews/{review}/approve', [ReviewController::class, 'approve']);
+        Route::put('reviews/{review}', [ReviewController::class, 'updateStatus']);
         Route::post('reviews/{review}/feature', [ReviewController::class, 'feature']);
 
         // Returns & Refunds

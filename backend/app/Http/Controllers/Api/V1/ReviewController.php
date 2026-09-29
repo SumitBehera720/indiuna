@@ -29,10 +29,16 @@ class ReviewController extends Controller
         }
 
         if ($request->filled('status')) {
-            $query->where('is_approved', $request->boolean('status'));
+            $status = $request->input('status');
+            if ($status === 'approved') {
+                $query->where('is_approved', true);
+            } elseif ($status === 'pending') {
+                $query->where('is_approved', false);
+            }
+            // 'all' or unknown: no filter
         }
 
-        $reviews = $query->paginate(15);
+        $reviews = $query->latest()->paginate(15);
 
         return $this->paginated($reviews, ReviewResource::class);
     }
@@ -95,6 +101,17 @@ class ReviewController extends Controller
         $review->update(['is_approved' => true]);
 
         return $this->success(new ReviewResource($review->fresh()), 'Review approved successfully');
+    }
+
+    public function updateStatus(string $id, Request $request): JsonResponse
+    {
+        $request->validate(['status' => 'required|in:approved,pending,rejected']);
+        $review = $this->review->findOrFail($id);
+
+        $isApproved = $request->input('status') === 'approved';
+        $review->update(['is_approved' => $isApproved]);
+
+        return $this->success(new ReviewResource($review->fresh()), 'Review updated successfully');
     }
 
     public function feature(string $id): JsonResponse

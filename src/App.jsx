@@ -1272,13 +1272,20 @@ export default function App() {
   }, []);
 
   // Wishlist State
-  const getWishlistKey = () => user?.id ? `wishlist_${user.id}` : 'wishlist';
-  const getCartKey = () => user?.id ? `cart_${user.id}` : 'cart';
+  const getWishlistKey = (uid) => {
+    const id = uid !== undefined ? uid : user?.id;
+    return id ? `wishlist_${id}` : 'wishlist';
+  };
+  const getCartKey = (uid) => {
+    const id = uid !== undefined ? uid : user?.id;
+    return id ? `cart_${id}` : 'cart';
+  };
+
+  // Flag to skip saving during a user-switch sync to avoid race condition
+  const skipSaveRef = useRef(false);
 
   const [wishlist, setWishlist] = useState(() => {
     try {
-      // Intentionally don't use getWishlistKey() on initial load to avoid hydration mismatches if user isn't loaded yet.
-      // But actually user is loaded from localStorage on mount.
       const u = JSON.parse(localStorage.getItem('user') || 'null');
       const key = u?.id ? `wishlist_${u.id}` : 'wishlist';
       const item = localStorage.getItem(key);
@@ -1289,8 +1296,10 @@ export default function App() {
   });
 
   useEffect(() => {
+    // Skip saving if we're in the middle of a user-switch reload
+    if (skipSaveRef.current) return;
     localStorage.setItem(getWishlistKey(), JSON.stringify(wishlist));
-  }, [wishlist, user?.id]);
+  }, [wishlist]);
 
   const toggleWishlist = (productId) => {
     setWishlist(prev => 
@@ -1313,18 +1322,24 @@ export default function App() {
   });
 
   useEffect(() => {
+    // Skip saving if we're in the middle of a user-switch reload
+    if (skipSaveRef.current) return;
     localStorage.setItem(getCartKey(), JSON.stringify(cart));
-  }, [cart, user?.id]);
+  }, [cart]);
 
-  // Sync when user changes (login/logout)
+  // Sync when user changes (login/logout) — load user-specific data WITHOUT triggering saves
   useEffect(() => {
+    // Signal that we're loading, not saving
+    skipSaveRef.current = true;
     try {
-      const wl = localStorage.getItem(getWishlistKey());
+      const wl = localStorage.getItem(getWishlistKey(user?.id));
       setWishlist(wl ? JSON.parse(wl) : []);
       
-      const cr = localStorage.getItem(getCartKey());
+      const cr = localStorage.getItem(getCartKey(user?.id));
       setCart(cr ? JSON.parse(cr) : []);
     } catch(e) {}
+    // Allow saves again on the next tick after state updates settle
+    setTimeout(() => { skipSaveRef.current = false; }, 100);
   }, [user?.id]);
 
   const [isCartOpen, setIsCartOpen] = useState(false);

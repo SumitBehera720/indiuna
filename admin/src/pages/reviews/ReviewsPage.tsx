@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Star, Check, X, MessageSquare } from 'lucide-react';
 import api from '@/lib/api';
 import { cn, getStatusColor, formatDate } from '@/lib/utils';
@@ -15,7 +15,7 @@ interface ReviewItem {
   created_at: string;
 }
 
-const tabs = ['all', 'pending', 'approved', 'rejected'] as const;
+const tabs = ['all', 'pending', 'approved'] as const;
 type Tab = typeof tabs[number];
 
 export default function ReviewsPage() {
@@ -47,7 +47,7 @@ export default function ReviewsPage() {
 
   useEffect(() => { fetchReviews(); }, [fetchReviews]);
 
-  const handleStatus = async (item: ReviewItem, status: 'approved' | 'rejected') => {
+  const handleStatus = async (item: ReviewItem, status: 'approved' | 'pending') => {
     try {
       await api.put(`/admin/reviews/${item.id}`, { status });
       toast.success(`Review ${status}`);
@@ -147,7 +147,7 @@ export default function ReviewsPage() {
       header: 'Actions',
       render: (item: ReviewItem) => (
         <div className="flex items-center gap-1">
-          {item.status === 'pending' && (
+          {item.status !== 'approved' && (
             <>
               <button
                 onClick={() => handleStatus(item, 'approved')}
@@ -156,14 +156,16 @@ export default function ReviewsPage() {
               >
                 <Check size={14} />
               </button>
-              <button
-                onClick={() => handleStatus(item, 'rejected')}
-                className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-surface-400 hover:text-red-600"
-                title="Reject"
-              >
-                <X size={14} />
-              </button>
             </>
+          )}
+          {item.status === 'approved' && (
+            <button
+              onClick={() => handleStatus(item, 'pending')}
+              className="p-1.5 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/20 text-surface-400 hover:text-amber-600"
+              title="Revoke Approval"
+            >
+              <X size={14} />
+            </button>
           )}
           <button onClick={() => handleDelete(item)} className="p-1.5 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-800 text-surface-400 hover:text-red-500">
             <X size={14} />

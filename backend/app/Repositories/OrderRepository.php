@@ -91,7 +91,17 @@ class OrderRepository extends BaseRepository implements OrderRepositoryInterface
 
     public function findWithRelations(string $id): ?Model
     {
-        return $this->model->with(['items', 'customer', 'payments', 'timeline', 'notes', 'coupon', 'shippingMethod'])
-            ->findOrFail($id);
+        return $this->model->with([
+            'items',
+            'items.product',
+            'items.product.categories',
+            'customer',
+            'payments',
+            'shipments',
+            'statusHistory',
+            'notes',
+            'coupon',
+            'shippingMethod',
+        ])->findOrFail($id);
     }
 }
