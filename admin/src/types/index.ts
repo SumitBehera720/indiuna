@@ -83,6 +83,7 @@ export interface Order {
   tax: number;
   status: string;
   payment_status: string;
+  payment_method?: string;
   shipping_status: string;
   shipping_method?: string;
   shipping_method_name?: string;
@@ -120,6 +121,10 @@ export interface OrderItem {
   subtotal: number;
   image?: string;
   meta_data?: Record<string, any>;
+  category?: {
+    id: string;
+    name: string;
+  };
 }
 
 export interface Customer {

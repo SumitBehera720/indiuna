@@ -147,6 +147,18 @@ class OrderService
 
             $this->orderRepository->update($order, ['status' => $newStatus]);
 
+            if (!empty($dto->tracking_number)) {
+                $order->shipments()->updateOrCreate(
+                    ['order_id' => $order->id],
+                    [
+                        'tracking_number' => $dto->tracking_number,
+                        'carrier' => $dto->courier_name ?? 'Unknown',
+                        'status' => 'shipped',
+                        'shipped_at' => now(),
+                    ]
+                );
+            }
+
             $order->timeline()->create([
                 'status' => $newStatus,
                 'notes' => $dto->notes ?? "Status changed from {$oldStatus} to {$newStatus}",
@@ -159,7 +171,7 @@ class OrderService
 
             OrderStatusChanged::dispatch($order, $oldStatus, $newStatus);
 
-            return $order->fresh()->load(['items', 'timeline', 'customer']);
+            return $order->fresh()->load(['items', 'timeline', 'customer', 'shipments']);
         });
     }
 

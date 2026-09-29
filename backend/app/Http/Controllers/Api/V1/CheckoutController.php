@@ -142,4 +142,38 @@ class CheckoutController extends Controller
 
         return $this->success(['shipping_rates' => $rates]);
     }
+
+    /**
+     * Retry payment for an existing pending order (creates a new Razorpay order).
+     */
+    public function retryPayment(\Illuminate\Http\Request $request, string $orderId): JsonResponse
+    {
+        $customerId = $request->user()?->customer?->id;
+
+        if (!$customerId) {
+            return $this->error('Customer profile not found', 404);
+        }
+
+        $order = \App\Models\Order::with('payments')
+            ->where('id', $orderId)
+            ->where('customer_id', $customerId)
+            ->first();
+
+        if (!$order) {
+            return $this->error('Order not found', 404);
+        }
+
+        $statusVal = $order->status?->value ?? $order->status;
+        if ($statusVal !== 'pending') {
+            return $this->error('This order is not eligible for payment retry', 422);
+        }
+
+        try {
+            $payload = $this->checkoutService->createRetryPayment($order);
+            return $this->success($payload, 'Payment retry initiated');
+        } catch (\RuntimeException $e) {
+            return $this->error($e->getMessage(), 400);
+        }
+    }
 }
+

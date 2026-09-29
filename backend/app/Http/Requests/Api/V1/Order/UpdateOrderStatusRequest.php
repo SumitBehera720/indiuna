@@ -17,6 +17,8 @@ class UpdateOrderStatusRequest extends FormRequest
             'status' => ['required', 'in:pending,confirmed,processing,shipped,delivered,cancelled,returned,refunded'],
             'notes' => ['nullable', 'string'],
             'notify_customer' => ['boolean'],
+            'tracking_number' => ['nullable', 'string'],
+            'courier_name' => ['nullable', 'string'],
         ];
     }
 

@@ -768,8 +768,8 @@ export default function App() {
       }
     }
 
-    // Always scroll to top when opening a new detail/info/checkout/profile view
-    if (!['home', 'customization', 'embroidered', 'patches'].includes(view)) {
+    // Always scroll to top when changing views unless returning to a listing
+    if (!(['home', 'customization', 'embroidered', 'patches'].includes(view) && isReturningFromProduct.current)) {
       scrollToTop();
     }
   };
@@ -1272,7 +1272,26 @@ export default function App() {
   }, []);
 
   // Wishlist State
-  const [wishlist, setWishlist] = useState([]);
+  const getWishlistKey = () => user?.id ? `wishlist_${user.id}` : 'wishlist';
+  const getCartKey = () => user?.id ? `cart_${user.id}` : 'cart';
+
+  const [wishlist, setWishlist] = useState(() => {
+    try {
+      // Intentionally don't use getWishlistKey() on initial load to avoid hydration mismatches if user isn't loaded yet.
+      // But actually user is loaded from localStorage on mount.
+      const u = JSON.parse(localStorage.getItem('user') || 'null');
+      const key = u?.id ? `wishlist_${u.id}` : 'wishlist';
+      const item = localStorage.getItem(key);
+      return item ? JSON.parse(item) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem(getWishlistKey(), JSON.stringify(wishlist));
+  }, [wishlist, user?.id]);
+
   const toggleWishlist = (productId) => {
     setWishlist(prev => 
       prev.includes(productId) 
@@ -1282,12 +1301,43 @@ export default function App() {
   };
 
   // Cart State
-  const [cart, setCart] = useState([]);
+  const [cart, setCart] = useState(() => {
+    try {
+      const u = JSON.parse(localStorage.getItem('user') || 'null');
+      const key = u?.id ? `cart_${u.id}` : 'cart';
+      const item = localStorage.getItem(key);
+      return item ? JSON.parse(item) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem(getCartKey(), JSON.stringify(cart));
+  }, [cart, user?.id]);
+
+  // Sync when user changes (login/logout)
+  useEffect(() => {
+    try {
+      const wl = localStorage.getItem(getWishlistKey());
+      setWishlist(wl ? JSON.parse(wl) : []);
+      
+      const cr = localStorage.getItem(getCartKey());
+      setCart(cr ? JSON.parse(cr) : []);
+    } catch(e) {}
+  }, [user?.id]);
+
   const [isCartOpen, setIsCartOpen] = useState(false);
 
   // Quick View Modal State (still kept for homepage catalog or general use)
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [selectedSize, setSelectedSize] = useState('L');
+  useEffect(() => {
+    if (selectedProduct) {
+      const isPatch = selectedProduct?.name?.toLowerCase().includes('patch') || selectedProduct?.category?.toLowerCase().includes('patch') || selectedProduct?.categories?.some(c => c.name.toLowerCase().includes('patch'));
+      setSelectedSize(isPatch ? '4 inches' : 'L');
+    }
+  }, [selectedProduct]);
 
   // Newsletter State
   const [newsletterEmail, setNewsletterEmail] = useState('');
@@ -1317,12 +1367,14 @@ export default function App() {
 
   // Scroll to top handler
   const scrollToTop = () => {
-    if (lenisRef.current) {
-      lenisRef.current.scrollTo(0, { immediate: true });
-    }
-    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
-    document.documentElement.scrollTop = 0;
-    document.body.scrollTop = 0;
+    setTimeout(() => {
+      if (lenisRef.current) {
+        lenisRef.current.scrollTo(0, { immediate: true });
+      }
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    }, 0);
   };
 
   // Categories Data
@@ -2704,6 +2756,7 @@ export default function App() {
                 <span>Subtotal</span>
                 <span className="cart-summary-total">₹{getCartTotal().toLocaleString('en-IN')}</span>
               </div>
+              <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', textAlign: 'center', marginBottom: '15px' }}>Shipping and taxes calculated at checkout.</p>
               <button 
                 className="checkout-btn" 
                 onClick={() => {
@@ -2740,7 +2793,7 @@ export default function App() {
               <div>
                 <h4 className="quickview-option-title">Select Size</h4>
                 <div className="quickview-sizes">
-                  {['S', 'M', 'L', 'XL', 'XXL'].map(size => (
+                  {(selectedProduct?.name?.toLowerCase().includes('patch') || selectedProduct?.category?.toLowerCase().includes('patch') || selectedProduct?.categories?.some(c => c.name.toLowerCase().includes('patch')) ? ['4 inches', '6 inches', '8 inches'] : ['S', 'M', 'L', 'XL', 'XXL']).map(size => (
                     <button 
                       key={size}
                       className={`size-btn ${selectedSize === size ? 'active' : ''}`}
@@ -3114,15 +3167,19 @@ export default function App() {
 
               {(() => {
                 const statusLower = String(trackingOrderModal.status || 'pending').toLowerCase();
-                let activeStepIndex = 1; // Default: Confirmed
-                if (statusLower.includes('shipped') || statusLower.includes('dispatch') || statusLower.includes('out_for_delivery')) {
-                  activeStepIndex = 3;
-                } else if (statusLower.includes('processing') || statusLower.includes('customiz') || statusLower.includes('stitching') || statusLower.includes('paid')) {
-                  activeStepIndex = 2;
-                } else if (statusLower.includes('delivered') || statusLower.includes('completed')) {
+                let activeStepIndex = 0; // Default: Confirmed
+                if (statusLower.includes('delivered') || statusLower.includes('completed')) {
                   activeStepIndex = 4;
+                } else if (statusLower.includes('shipped') || statusLower.includes('dispatch') || statusLower.includes('out_for_delivery')) {
+                  activeStepIndex = 3;
+                } else if (statusLower.includes('courier') || statusLower.includes('handed') || statusLower.includes('pickup')) {
+                  activeStepIndex = 2;
+                } else if (statusLower.includes('processing') || statusLower.includes('production') || statusLower.includes('customiz') || statusLower.includes('stitching')) {
+                  activeStepIndex = 1;
                 } else if (statusLower.includes('cancel')) {
                   activeStepIndex = -1;
+                } else if (statusLower.includes('pending')) {
+                  activeStepIndex = 0;
                 }
 
                 if (activeStepIndex === -1) {
@@ -3135,9 +3192,9 @@ export default function App() {
                 }
 
                 const steps = [
-                  { title: 'Order Placed', desc: 'Received & Logged', icon: ShoppingBag },
-                  { title: 'Confirmed', desc: 'Payment Verified', icon: ShieldCheck },
-                  { title: 'Processing', desc: 'Embroidery Crafting', icon: Scissors },
+                  { title: 'Order Confirmed', desc: 'Received & Logged', icon: ShoppingBag },
+                  { title: 'In Production', desc: 'Embroidery & Crafting', icon: Scissors },
+                  { title: 'Handed to Courier', desc: 'Awaiting Pickup', icon: Package },
                   { title: 'Shipped', desc: 'In Transit', icon: Truck },
                   { title: 'Delivered', desc: 'Package Delivered', icon: CheckCircle2 }
                 ];
@@ -3233,16 +3290,16 @@ function InfoPage({ view, onBack, onChangeView }) {
       setIsTracking(false);
       setTrackedOrderResult({
         id: trackingOrderId.toUpperCase(),
-        status: 'In Production & Stitching',
+        status: 'In Production',
         estimatedDelivery: '3–4 Business Days',
         carrier: 'Delhivery Express',
-        step: 2,
+        step: 1,
         steps: [
           { title: 'Order Confirmed', date: 'Yesterday, 02:30 PM', done: true },
-          { title: 'Embroidery Digitizing & Setup', date: 'Today, 09:15 AM', done: true },
-          { title: 'In Production & Stitching', date: 'In Progress', active: true },
-          { title: 'Quality Control Audit', date: 'Expected Tomorrow' },
-          { title: 'Handed to Delhivery Express', date: 'Expected Friday' },
+          { title: 'In Production', date: 'In Progress', active: true },
+          { title: 'Handed to Courier Partner', date: 'Expected Tomorrow' },
+          { title: 'Shipped', date: 'Expected Friday' },
+          { title: 'Delivered', date: 'Expected Monday' },
         ]
       });
     }, 600);
@@ -4440,7 +4497,7 @@ function ProductDetailPage({
   };
   // State declarations (MUST BE UNCONDITIONAL AT TOP OF COMPONENT)
   const [selectedColor, setSelectedColor] = useState('Black');
-  const [selectedSize, setSelectedSize] = useState('L');
+  const [selectedSize, setSelectedSize] = useState(() => (product?.name?.toLowerCase().includes('patch') || product?.category?.toLowerCase().includes('patch') || product?.categories?.some(c => c.name.toLowerCase().includes('patch')) ? '4 inches' : 'L'));
   const [activeImage, setActiveImage] = useState(product?.image || '');
   const [showNotifyModal, setShowNotifyModal] = useState(false);
   const [notifyEmail, setNotifyEmail] = useState(user?.email || '');
@@ -4887,7 +4944,7 @@ function ProductDetailPage({
               </button>
             </div>
             <div className="size-buttons-grid">
-              {['S', 'M', 'L', 'XL', 'XXL'].map(size => (
+              {(product?.name?.toLowerCase().includes('patch') || product?.category?.toLowerCase().includes('patch') || product?.categories?.some(c => c.name.toLowerCase().includes('patch')) ? ['4 inches', '6 inches', '8 inches'] : ['S', 'M', 'L', 'XL', 'XXL']).map(size => (
                 <button 
                   key={size}
                   className={`size-btn ${selectedSize === size ? 'active' : ''}`}
@@ -5097,31 +5154,21 @@ function ProductDetailPage({
             ) : (
               <div className="primary-actions-row">
                 <button className="btn-buy-now" onClick={() => {
-                  if (isCustomizationProduct) {
-                    if (!customPhotoUrl) { alert('Please upload a reference image to customize your order.'); return; }
-                    if (!customEmbroiderySize) { alert('Please select an embroidery size for your customization.'); return; }
-                    if (!customPlacement) { alert('Please select a placement location for your customization.'); return; }
-                  }
                   const customOptions = isCustomizationProduct ? {
-                    photoUrl: customPhotoUrl,
-                    embroiderySize: customEmbroiderySize,
-                    placement: customPlacement,
-                    notes: customNotes
+                    photoUrl: customPhotoUrl || null,
+                    embroiderySize: customEmbroiderySize || 'Pocket Logo (3" × 3")',
+                    placement: customPlacement || 'Left Chest',
+                    notes: customNotes || ''
                   } : null;
                   buyNow(product, selectedSize, selectedColor, customOptions);
                 }}>Buy Now</button>
                 
                 <button className="btn-add-cart" onClick={() => {
-                  if (isCustomizationProduct) {
-                    if (!customPhotoUrl) { alert('Please upload a reference image to customize your order.'); return; }
-                    if (!customEmbroiderySize) { alert('Please select an embroidery size for your customization.'); return; }
-                    if (!customPlacement) { alert('Please select a placement location for your customization.'); return; }
-                  }
                   const customOptions = isCustomizationProduct ? {
-                    photoUrl: customPhotoUrl,
-                    embroiderySize: customEmbroiderySize,
-                    placement: customPlacement,
-                    notes: customNotes
+                    photoUrl: customPhotoUrl || null,
+                    embroiderySize: customEmbroiderySize || 'Pocket Logo (3" × 3")',
+                    placement: customPlacement || 'Left Chest',
+                    notes: customNotes || ''
                   } : null;
                   addToCart(product, selectedSize, selectedColor, customOptions);
                 }}>Add To Cart</button>
@@ -6890,6 +6937,8 @@ function ProfilePage({
 }) {
 
   const [activeAddressForm, setActiveAddressForm] = useState(null); // null | 'new' | addressObj
+  const [payNowLoading, setPayNowLoading] = useState(null);     // orderId being retried
+  const [cancelOrderLoading, setCancelOrderLoading] = useState(null); // orderId being cancelled
   const [addressFirstName, setAddressFirstName] = useState('');
   const [addressLastName, setAddressLastName] = useState('');
   const [addressPhone, setAddressPhone] = useState('');
@@ -6906,6 +6955,17 @@ function ProfilePage({
   const [detailsPhone, setDetailsPhone] = useState(user?.phone || '');
   const [detailsEmail, setDetailsEmail] = useState(user?.email || '');
   const [detailsLoading, setDetailsLoading] = useState(false);
+
+  useEffect(() => {
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.async = true;
+    document.body.appendChild(script);
+    
+    return () => {
+      document.body.removeChild(script);
+    };
+  }, []);
 
   useEffect(() => {
     if (user) {
@@ -7053,6 +7113,95 @@ function ProfilePage({
       console.error('Failed to load orders:', err);
     } finally {
       setOrderLoading(false);
+    }
+  };
+
+  const handlePayNow = async (order) => {
+    const currentToken = token || localStorage.getItem('auth_token') || localStorage.getItem('token');
+    if (!currentToken) { showAlertError(formatUserError(401, null, 'retry payment')); return; }
+    if (!window.Razorpay) { alert('Payment gateway not loaded. Please refresh the page.'); return; }
+    setPayNowLoading(order.id);
+    try {
+      const res = await fetch(`${API_BASE}/customer/orders/${order.id}/retry-payment`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${currentToken}`, 'Accept': 'application/json', 'Content-Type': 'application/json' }
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        const errObj = formatUserError(res.status, data, 'retry payment');
+        showAlertError(errObj);
+        setPayNowLoading(null);
+        return;
+      }
+      const orderData = data.data;
+      const options = {
+        key: orderData.key_id,
+        amount: orderData.amount_paise,
+        currency: orderData.currency || 'INR',
+        name: 'INDIUNA',
+        description: `Payment for Order ${orderData.order_number}`,
+        order_id: orderData.razorpay_order_id,
+        handler: async function (response) {
+          try {
+            const verifyRes = await fetch(`${API_BASE}/checkout/verify`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                order_id: orderData.order_id
+              })
+            });
+            const verifyData = await verifyRes.json();
+            if (verifyRes.ok && verifyData.success) {
+              alert(`✅ Payment Successful!\nOrder ${orderData.order_number} has been paid. Thank you!`);
+              fetchOrders();
+            } else {
+              alert(verifyData.message || 'Signature verification failed');
+            }
+          } catch (err) {
+            console.error(err);
+            alert('Payment verification failed. Please contact support.');
+          }
+        },
+        prefill: { name: `${user?.first_name || ''} ${user?.last_name || ''}`, email: user?.email || '', contact: user?.phone || '' },
+        theme: { color: '#e31e24' },
+        modal: { ondismiss: () => setPayNowLoading(null) }
+      };
+      const rzp = new window.Razorpay(options);
+      rzp.open();
+    } catch (err) {
+      console.error(err);
+      alert('Network error while initiating payment. Please try again.');
+    } finally {
+      setPayNowLoading(null);
+    }
+  };
+
+  const handleCancelOrder = async (order) => {
+    if (!window.confirm(`Are you sure you want to request cancellation for order ${order.order_number}?`)) return;
+    const currentToken = token || localStorage.getItem('auth_token') || localStorage.getItem('token');
+    if (!currentToken) { showAlertError(formatUserError(401, null, 'cancel order')); return; }
+    setCancelOrderLoading(order.id);
+    try {
+      const res = await fetch(`${API_BASE}/customer/orders/${order.id}/cancel`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${currentToken}`, 'Accept': 'application/json' }
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        alert('Cancellation request sent. You will be informed by email once processed.');
+        setOrders(prev => prev.map(o => o.id === order.id ? { ...o, status: 'cancelled' } : o));
+      } else {
+        const errObj = formatUserError(res.status, data, 'cancel order');
+        showAlertError(errObj);
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Network error. Please try again.');
+    } finally {
+      setCancelOrderLoading(null);
     }
   };
 
@@ -7582,16 +7731,40 @@ function ProfilePage({
                               {new Date(order.placed_at || order.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                             </span>
                           </div>
-                          <div className="order-meta-item">
-                            <span className="order-meta-label">Total Amount</span>
-                            <span className="order-meta-value">₹{parseFloat(order.total || 0).toLocaleString('en-IN')}</span>
+                          <div className="order-meta-item" style={{ flexDirection: 'column', alignItems: 'flex-start', flex: '1 1 100%' }}>
+                            <span className="order-meta-label" style={{ marginBottom: '4px' }}>Amount Breakdown</span>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', width: '100%', gap: '4px', fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+                              <span>Subtotal:</span> <span>₹{parseFloat(order.subtotal || 0).toLocaleString('en-IN')}</span>
+                              {parseFloat(order.shipping_cost || 0) > 0 && (
+                                <><span>Shipping:</span> <span>₹{parseFloat(order.shipping_cost || 0).toLocaleString('en-IN')}</span></>
+                              )}
+                              {parseFloat(order.tax || 0) > 0 && (
+                                <><span>Tax:</span> <span>₹{parseFloat(order.tax || 0).toLocaleString('en-IN')}</span></>
+                              )}
+                              {parseFloat(order.discount || 0) > 0 && (
+                                <><span>Discount:</span> <span style={{ color: 'var(--color-primary)' }}>-₹{parseFloat(order.discount || 0).toLocaleString('en-IN')}</span></>
+                              )}
+                              <span style={{ fontWeight: 800, color: 'var(--color-text-dark)', marginTop: '4px' }}>Total:</span>
+                              <span style={{ fontWeight: 800, color: 'var(--color-text-dark)', marginTop: '4px' }}>₹{parseFloat(order.total || 0).toLocaleString('en-IN')}</span>
+                            </div>
                           </div>
                           <div className="order-meta-item">
                             <span className="order-meta-label">Payment Status</span>
                             <span className="order-meta-value" style={{ textTransform: 'uppercase' }}>{order.payment_status || 'N/A'}</span>
                           </div>
                         </div>
-                        <span className={`order-status-badge ${(order.status || 'pending').toLowerCase()}`}>{order.status || 'Pending'}</span>
+                        <span className={`order-status-badge ${(order.status || 'pending').toLowerCase()}`}>
+                          {(() => {
+                            const stat = (order.status || 'pending').toLowerCase();
+                            if (stat === 'pending') return 'Order Confirmed';
+                            if (stat === 'processing') return 'In Production';
+                            if (stat === 'ready') return 'Handed to Courier Partner';
+                            if (stat === 'shipped') return 'Shipped';
+                            if (stat === 'delivered') return 'Delivered';
+                            if (stat === 'cancelled') return 'Cancelled';
+                            return order.status;
+                          })()}
+                        </span>
                       </div>
 
                       <div className="order-card-body">
@@ -7615,18 +7788,74 @@ function ProfilePage({
                         ))}
                       </div>
 
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 18px', backgroundColor: 'var(--color-bg-alt, #f8fafc)', borderTop: '1px dashed var(--color-border)', borderRadius: '0 0 12px 12px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 18px', backgroundColor: 'var(--color-bg-alt, #f8fafc)', borderTop: '1px dashed var(--color-border)', borderRadius: '0 0 12px 12px', flexWrap: 'wrap', gap: '8px' }}>
                         <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
                           {order.items?.length || 1} Item(s)
                         </span>
-                        <button 
-                          type="button"
-                          className="btn-solid-red"
-                          onClick={() => onTrackOrder && onTrackOrder(order)}
-                          style={{ padding: '7px 16px', fontSize: '0.8rem', width: 'auto', display: 'inline-flex', alignItems: 'center', gap: '6px', borderRadius: '8px', cursor: 'pointer' }}
-                        >
-                          <Package size={15} /> Track Order Progress
-                        </button>
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                          {/* Show Pay Now only for pending orders (payment not yet completed) */}
+                          {(order.status || '').toLowerCase() === 'pending' && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => handlePayNow(order)}
+                                disabled={!!payNowLoading || !!cancelOrderLoading}
+                                style={{
+                                  padding: '7px 16px',
+                                  fontSize: '0.8rem',
+                                  width: 'auto',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                  borderRadius: '8px',
+                                  cursor: payNowLoading === order.id ? 'not-allowed' : 'pointer',
+                                  backgroundColor: '#16a34a',
+                                  color: '#fff',
+                                  border: 'none',
+                                  fontWeight: 700,
+                                  opacity: (payNowLoading === order.id || cancelOrderLoading === order.id) ? 0.7 : 1
+                                }}
+                              >
+                                <CreditCard size={15} />
+                                {payNowLoading === order.id ? 'Opening...' : 'Pay Now'}
+                              </button>
+                            </>
+                          )}
+                          {/* Show Cancel Order for pending, confirmed, processing orders */}
+                          {['pending', 'confirmed', 'processing'].includes((order.status || '').toLowerCase()) && (
+                            <button
+                              type="button"
+                              onClick={() => handleCancelOrder(order)}
+                              disabled={!!payNowLoading || !!cancelOrderLoading}
+                              style={{
+                                padding: '7px 16px',
+                                fontSize: '0.8rem',
+                                width: 'auto',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                borderRadius: '8px',
+                                cursor: cancelOrderLoading === order.id ? 'not-allowed' : 'pointer',
+                                backgroundColor: '#fff',
+                                color: '#dc2626',
+                                border: '1.5px solid #dc2626',
+                                fontWeight: 700,
+                                opacity: (payNowLoading === order.id || cancelOrderLoading === order.id) ? 0.7 : 1
+                              }}
+                            >
+                              <X size={15} />
+                              {cancelOrderLoading === order.id ? 'Cancelling...' : 'Cancel Order'}
+                            </button>
+                          )}
+                          <button 
+                            type="button"
+                            className="btn-solid-red"
+                            onClick={() => onTrackOrder && onTrackOrder(order)}
+                            style={{ padding: '7px 16px', fontSize: '0.8rem', width: 'auto', display: 'inline-flex', alignItems: 'center', gap: '6px', borderRadius: '8px', cursor: 'pointer' }}
+                          >
+                            <Package size={15} /> Track Order Progress
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -8045,10 +8274,10 @@ function CheckoutPage({ user, token, cart, setCart, getCartTotal, API_BASE, prod
         })
       });
       const data = await res.json();
-      if (res.ok && data.success && data.data && data.data.length > 0) {
-        setAvailableShippingRates(data.data);
-        setSelectedShippingMethod(data.data[0].code);
-        setShippingCost(parseFloat(data.data[0].rate));
+      if (res.ok && data.success && data.data && data.data.rates && data.data.rates.length > 0) {
+        setAvailableShippingRates(data.data.rates);
+        setSelectedShippingMethod(data.data.rates[0].code);
+        setShippingCost(parseFloat(data.data.rates[0].cost));
       } else {
         setAvailableShippingRates([]);
         setShippingCost(0);
@@ -8387,7 +8616,7 @@ function CheckoutPage({ user, token, cart, setCart, getCartTotal, API_BASE, prod
 
             <div className="profile-form-grid">
               <div className="auth-form-group">
-                <label className="auth-label">Postal Code</label>
+                <label className="auth-label">Pincode</label>
                 <input 
                   type="text" 
                   className="auth-input" 
@@ -8416,13 +8645,13 @@ function CheckoutPage({ user, token, cart, setCart, getCartTotal, API_BASE, prod
                   <div 
                     key={rate.code}
                     className={`shipping-method-option ${selectedShippingMethod === rate.code ? 'active' : ''}`}
-                    onClick={() => { setSelectedShippingMethod(rate.code); setShippingCost(parseFloat(rate.rate)); }}
+                    onClick={() => { setSelectedShippingMethod(rate.code); setShippingCost(parseFloat(rate.cost)); }}
                   >
                     <div>
                       <strong style={{ display: 'block', fontSize: '0.9rem' }}>{rate.name}</strong>
                       <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{rate.description || 'Estimated 3-5 days delivery'}</span>
                     </div>
-                    <span style={{ fontWeight: 700, color: 'var(--color-text-dark)' }}>₹{parseFloat(rate.rate)}</span>
+                    <span style={{ fontWeight: 700, color: 'var(--color-text-dark)' }}>₹{parseFloat(rate.cost)}</span>
                   </div>
                 ))}
               </div>

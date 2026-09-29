@@ -40,6 +40,9 @@ export default function OrderDetailPage() {
       .finally(() => setLoading(false));
   };
 
+  const [trackingNumber, setTrackingNumber] = useState('');
+  const [courierName, setCourierName] = useState('');
+
   const handleUpdateStatus = async () => {
     if (!id || !selectedStatus) return;
     setUpdatingStatus(true);
@@ -49,11 +52,15 @@ export default function OrderDetailPage() {
       await api.put(`/admin/orders/${id}/status`, {
         status: selectedStatus,
         notes: statusNotes.trim() || undefined,
+        tracking_number: trackingNumber.trim() || undefined,
+        courier_name: courierName.trim() || undefined,
         notify_customer: true,
       });
       toast.success('Order status updated successfully');
       setStatusSuccess('Order status updated successfully!');
       setStatusNotes('');
+      setTrackingNumber('');
+      setCourierName('');
       setTimeout(() => setStatusSuccess(''), 3000);
       loadOrder();
     } catch (err: any) {
@@ -232,6 +239,9 @@ export default function OrderDetailPage() {
                           )}
                           <div className="space-y-1">
                             <span className="text-sm font-medium block text-surface-900 dark:text-white">{item.name}</span>
+                            {item.category && (
+                              <span className="text-xs text-surface-500 block">Category: {item.category.name}</span>
+                            )}
                             {item.meta_data && (
                               <div className="p-2 rounded-lg bg-surface-50 dark:bg-surface-850 border border-surface-200 dark:border-surface-800 text-xs space-y-1 mt-1">
                                 <span className="font-bold text-primary-600 dark:text-primary-400 block">🎨 Custom Embroidery Specs</span>
@@ -364,10 +374,35 @@ export default function OrderDetailPage() {
                 />
               </div>
 
+              {selectedStatus === 'shipped' && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-surface-500 mb-1">Tracking Number</label>
+                    <input
+                      type="text"
+                      value={trackingNumber}
+                      onChange={(e) => setTrackingNumber(e.target.value)}
+                      placeholder="Optional"
+                      className="input-field w-full"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-surface-500 mb-1">Courier Name</label>
+                    <input
+                      type="text"
+                      value={courierName}
+                      onChange={(e) => setCourierName(e.target.value)}
+                      placeholder="Optional"
+                      className="input-field w-full"
+                    />
+                  </div>
+                </div>
+              )}
+
               <button
                 type="button"
                 onClick={handleUpdateStatus}
-                disabled={updatingStatus || (selectedStatus === order.status && !statusNotes.trim())}
+                disabled={updatingStatus || (selectedStatus === order.status && !statusNotes.trim() && !trackingNumber.trim() && !courierName.trim())}
                 className="btn-primary w-full inline-flex items-center justify-center gap-2"
               >
                 {updatingStatus ? <Loader2 size={14} className="animate-spin" /> : null}
@@ -392,6 +427,14 @@ export default function OrderDetailPage() {
           <div className="card p-6">
             <h2 className="text-lg font-semibold mb-4 font-heading">Order Summary</h2>
             <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-surface-400">Payment Method</span>
+                <span className="capitalize font-medium">{order.payment_method || 'N/A'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-surface-400">Shipping Method</span>
+                <span className="capitalize font-medium">{order.shipping_method_name || order.shipping_method || 'N/A'}</span>
+              </div>
               <div className="flex justify-between">
                 <span className="text-surface-400">Subtotal</span>
                 <span>{formatCurrency(order.subtotal)}</span>

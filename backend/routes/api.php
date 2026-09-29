@@ -87,7 +87,10 @@ Route::prefix('v1')->group(function () {
         Route::put('customer/{customer}/addresses/{address}', [CustomerAddressController::class, 'update']);
         Route::delete('customer/{customer}/addresses/{address}', [CustomerAddressController::class, 'destroy']);
         Route::get('customer/orders', [OrderController::class, 'myOrders']);
+        Route::delete('customer/orders/{order}/cancel', [OrderController::class, 'cancelMyOrder']);
+        Route::post('customer/orders/{order}/retry-payment', [CheckoutController::class, 'retryPayment']);
         Route::get('customer/wishlist', [CustomerController::class, 'wishlist']);
+
         Route::post('customer/wishlist', [CustomerController::class, 'addToWishlist']);
         Route::delete('customer/wishlist/{product}', [CustomerController::class, 'removeFromWishlist']);
 

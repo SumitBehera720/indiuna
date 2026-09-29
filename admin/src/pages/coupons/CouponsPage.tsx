@@ -8,12 +8,12 @@ import toast from 'react-hot-toast';
 interface CouponItem {
   id: string;
   code: string;
-  discount_type: 'percentage' | 'fixed';
+  type: 'percentage' | 'fixed';
   value: number;
   min_order_amount?: number;
-  max_discount?: number;
+  max_discount_amount?: number;
   usage_limit?: number;
-  used_count: number;
+  total_used: number;
   starts_at: string;
   expires_at: string;
   is_active: boolean;
@@ -21,10 +21,10 @@ interface CouponItem {
 
 const defaultForm = {
   code: '',
-  discount_type: 'percentage' as 'percentage' | 'fixed',
+  type: 'percentage' as 'percentage' | 'fixed',
   value: 0,
   min_order_amount: 0,
-  max_discount: 0,
+  max_discount_amount: 0,
   usage_limit: 0,
   expires_at: '',
 };
@@ -71,10 +71,10 @@ export default function CouponsPage() {
     setEditing(item);
     setForm({
       code: item.code,
-      discount_type: item.discount_type,
+      type: item.type,
       value: item.value,
       min_order_amount: item.min_order_amount ?? 0,
-      max_discount: item.max_discount ?? 0,
+      max_discount_amount: item.max_discount_amount ?? 0,
       usage_limit: item.usage_limit ?? 0,
       expires_at: item.expires_at ? item.expires_at.slice(0, 10) : '',
     });
@@ -87,10 +87,13 @@ export default function CouponsPage() {
     setSaving(true);
     try {
       const payload = {
-        ...form,
+        code: form.code,
+        type: form.type,
+        value: form.value,
         min_order_amount: form.min_order_amount || null,
-        max_discount: form.max_discount || null,
+        max_discount_amount: form.max_discount_amount || null,
         usage_limit: form.usage_limit || null,
+        expires_at: form.expires_at || null,
       };
       if (editing) {
         await api.put(`/admin/coupons/${editing.id}`, payload);
@@ -134,11 +137,11 @@ export default function CouponsPage() {
   const columns = [
     { key: 'code', header: 'Code', sortable: true },
     {
-      key: 'discount_type',
+      key: 'type',
       header: 'Type',
       render: (item: CouponItem) => (
-        <span className={cn('badge', item.discount_type === 'percentage' ? 'badge-info' : 'badge-warning')}>
-          {item.discount_type === 'percentage' ? '%' : '₹'}
+        <span className={cn('badge', item.type === 'percentage' ? 'badge-info' : 'badge-warning')}>
+          {item.type === 'percentage' ? '%' : '₹'}
         </span>
       ),
     },
@@ -148,7 +151,7 @@ export default function CouponsPage() {
       sortable: true,
       render: (item: CouponItem) => (
         <span className="font-medium">
-          {item.discount_type === 'percentage' ? `${item.value}%` : formatCurrency(item.value)}
+          {item.type === 'percentage' ? `${item.value}%` : formatCurrency(item.value)}
         </span>
       ),
     },
@@ -160,11 +163,11 @@ export default function CouponsPage() {
       ),
     },
     {
-      key: 'used_count',
+      key: 'total_used',
       header: 'Usage',
       sortable: true,
       render: (item: CouponItem) => (
-        <span className="text-surface-500">{item.used_count}{item.usage_limit ? ` / ${item.usage_limit}` : ''}</span>
+        <span className="text-surface-500">{item.total_used}{item.usage_limit ? ` / ${item.usage_limit}` : ''}</span>
       ),
     },
     {
@@ -263,7 +266,7 @@ export default function CouponsPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Type</label>
-                  <select value={form.discount_type} onChange={(e) => setForm({ ...form, discount_type: e.target.value as 'percentage' | 'fixed' })} className="input-field">
+                  <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as 'percentage' | 'fixed' })} className="input-field">
                     <option value="percentage">Percentage</option>
                     <option value="fixed">Fixed Amount</option>
                   </select>
@@ -272,7 +275,7 @@ export default function CouponsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Value</label>
-                  <input type="number" value={form.value} onChange={(e) => setForm({ ...form, value: Number(e.target.value) })} className="input-field" placeholder={form.discount_type === 'percentage' ? '10' : '500'} />
+                  <input type="number" value={form.value} onChange={(e) => setForm({ ...form, value: Number(e.target.value) })} className="input-field" placeholder={form.type === 'percentage' ? '10' : '500'} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Min Order Amount</label>
@@ -282,7 +285,7 @@ export default function CouponsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Max Discount</label>
-                  <input type="number" value={form.max_discount} onChange={(e) => setForm({ ...form, max_discount: Number(e.target.value) })} className="input-field" placeholder="0" />
+                  <input type="number" value={form.max_discount_amount} onChange={(e) => setForm({ ...form, max_discount_amount: Number(e.target.value) })} className="input-field" placeholder="0" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">Usage Limit</label>

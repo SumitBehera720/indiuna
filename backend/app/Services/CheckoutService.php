@@ -168,9 +168,36 @@ class CheckoutService
                     ],
                 ]);
             } else {
+                // COD: mark order as confirmed immediately
                 $payment->update([
                     'gateway_response' => ['gateway' => 'cod'],
+                    'status' => PaymentStatus::Completed->value,
+                    'paid_at' => now(),
                 ]);
+
+                $order->update([
+                    'status' => OrderStatus::Confirmed->value,
+                    'payment_status' => PaymentStatus::Completed->value,
+                    'paid_total' => $order->grand_total,
+                    'due_total' => 0,
+                ]);
+
+                $order->timeline()->create([
+                    'status' => OrderStatus::Confirmed->value,
+                    'notes' => 'Order confirmed — Cash on Delivery',
+                ]);
+
+                if ($order->coupon_code) {
+                    \App\Models\Coupon::where('code', $order->coupon_code)->increment('used_count');
+                }
+
+                $customer = $order->customer;
+                if ($customer) {
+                    $customer->increment('total_orders');
+                    $customer->increment('total_spent', (float) $order->grand_total);
+                    $customer->update(['last_purchased_at' => now()]);
+                }
+
                 $this->processStockReductionAndAlert($order);
                 $this->sendOrderConfirmationEmail($order);
             }
@@ -196,6 +223,63 @@ class CheckoutService
         OrderCreated::dispatch($order);
 
         return $payload;
+    }
+
+    /**
+     * Create a new Razorpay order for an existing pending order (payment retry).
+     *
+     * @return array<string, mixed>
+     */
+    public function createRetryPayment(Order $order): array
+    {
+        if (!$this->paymentService->razorpayEnabled()) {
+            throw new RuntimeException('Online payments are currently disabled');
+        }
+
+        // Get existing pending payment or create a fresh one
+        $payment = $order->payments()
+            ->where('status', PaymentStatus::Pending->value)
+            ->where('payment_method', 'razorpay')
+            ->first();
+
+        // Create a new Razorpay order for the same amount
+        $gatewayOrder = $this->paymentService->createRazorpayOrder(
+            $order->order_number,
+            (int) round($order->grand_total * 100)
+        );
+
+        if ($payment) {
+            $payment->update([
+                'gateway_response' => [
+                    'gateway' => 'razorpay',
+                    'razorpay_order_id' => $gatewayOrder['id'],
+                ],
+            ]);
+        } else {
+            $payment = $order->payments()->create([
+                'payment_method'      => 'razorpay',
+                'payment_method_name' => 'Razorpay',
+                'status'              => PaymentStatus::Pending->value,
+                'amount'              => $order->grand_total,
+                'fee'                 => 0,
+                'net_amount'          => $order->grand_total,
+                'currency'            => 'INR',
+                'gateway_response'    => [
+                    'gateway'          => 'razorpay',
+                    'razorpay_order_id' => $gatewayOrder['id'],
+                ],
+            ]);
+        }
+
+        return [
+            'order_id'          => $order->id,
+            'order_number'      => $order->order_number,
+            'amount_paise'      => (int) round($order->grand_total * 100),
+            'currency'          => 'INR',
+            'payment_method'    => 'razorpay',
+            'razorpay_order_id' => $gatewayOrder['id'],
+            'key_id'            => $this->paymentService->razorpayKeyId(),
+        ];
     }
 
     /**
@@ -368,46 +452,17 @@ class CheckoutService
      */
     public function getShippingRates(array $data): array
     {
-        $items = $this->resolveItems($data['items'] ?? []);
-
-        $weight = 0.0;
-        $subtotal = 0.0;
-
-        foreach ($items as $item) {
-            $weight += ((float) ($item['variant']->weight ?? 0)) * $item['quantity'];
-            $subtotal += $item['subtotal'];
-        }
-
-        $postalCode = $data['postal_code'] ?? null;
-        $cod = (bool) ($data['cod'] ?? false);
-
-        if ($postalCode) {
-            $live = $this->shippingService->getLiveRates($weight, $postalCode, max($subtotal, 1), $cod);
-
-            if (!empty($live)) {
-                return [
-                    'source' => 'shiprocket',
-                    'rates' => array_map(fn ($rate) => [
-                        'code' => $rate['courier_id'],
-                        'name' => $rate['courier_name'],
-                        'cost' => $rate['rate'],
-                        'estimated_delivery_days' => $rate['estimated_delivery_days'],
-                        'rto_charges' => $rate['rto_charges'],
-                    ], $live),
-                ];
-            }
-        }
-
-        $fallback = $this->shippingService->resolveRate(null, $weight, $subtotal, $postalCode);
-
         return [
-            'source' => 'flat',
-            'rates' => [[
-                'code' => $fallback['code'],
-                'name' => $fallback['name'] ?? 'Standard Shipping',
-                'cost' => $fallback['cost'],
-                'estimated_delivery_days' => null,
-            ]],
+            'source' => 'default',
+            'rates' => [
+                [
+                    'code' => 'free',
+                    'name' => 'Free Shipping',
+                    'cost' => 0.0,
+                    'estimated_delivery_days' => '5-7',
+                    'rto_charges' => 0.0,
+                ]
+            ]
         ];
     }
 
@@ -478,58 +533,13 @@ class CheckoutService
             }
         }
 
-        $weight = 0.0;
-        foreach ($items as $item) {
-            $weight += ((float) ($item['variant']->weight ?? 0)) * $item['quantity'];
-        }
-
-        $postalCode = $data['shipping_address']['postal_code'] ?? null;
-        $cod = ($data['payment_method'] ?? 'razorpay') === 'cod';
-
-        $liveRates = $postalCode
-            ? $this->shippingService->getLiveRates($weight, $postalCode, max($subtotal - $discount, 1), $cod)
-            : [];
-
-        if (!empty($liveRates)) {
-            $selected = null;
-
-            foreach ($liveRates as $rate) {
-                if ($rate['courier_id'] === ($data['shipping_method_code'] ?? null)) {
-                    $selected = $rate;
-                    break;
-                }
-            }
-
-            $selected ??= $liveRates[0];
-
-            $shipping = [
-                'code' => (string) $selected['courier_id'],
-                'name' => $selected['courier_name'],
-                'cost' => (float) $selected['rate'],
-                'estimated_days_min' => null,
-                'estimated_days_max' => null,
-            ];
-        } else {
-            // Only call resolveRate when user explicitly selected a shipping method.
-            // When no method code is provided the frontend shows ₹0 — mirror that so
-            // the grand_total sent to Razorpay matches what was displayed to the user.
-            if (!empty($data['shipping_method_code'])) {
-                $shipping = $this->shippingService->resolveRate(
-                    $data['shipping_method_code'],
-                    $weight,
-                    $subtotal,
-                    $postalCode,
-                );
-            } else {
-                $shipping = [
-                    'code'                => 'free',
-                    'name'                => 'Free Shipping',
-                    'cost'                => 0.0,
-                    'estimated_days_min'  => 5,
-                    'estimated_days_max'  => 7,
-                ];
-            }
-        }
+        $shipping = [
+            'code'                => 'free',
+            'name'                => 'Free Shipping',
+            'cost'                => 0.0,
+            'estimated_days_min'  => 5,
+            'estimated_days_max'  => 7,
+        ];
 
         $taxResult = $this->taxService->calculateTax(
             max($subtotal - $discount, 0),

@@ -126,4 +126,37 @@ class OrderController extends Controller
 
         return $this->paginated($orders, OrderResource::class);
     }
+
+    /**
+     * Allow a customer to cancel their own pending order.
+     */
+    public function cancelMyOrder(string $id, Request $request): JsonResponse
+    {
+        $customerId = $request->user()->customer?->id;
+
+        if (!$customerId) {
+            return $this->error('Customer profile not found', 404);
+        }
+
+        $order = \App\Models\Order::where('id', $id)
+            ->where('customer_id', $customerId)
+            ->first();
+
+        if (!$order) {
+            return $this->error('Order not found', 404);
+        }
+
+        if (!in_array($order->status?->value ?? $order->status, ['pending', 'confirmed', 'processing'])) {
+            return $this->error('Only pending, confirmed, or processing orders can be cancelled', 422);
+        }
+
+        $order->update(['status' => \App\Enums\OrderStatus::Cancelled->value]);
+
+        $order->timeline()->create([
+            'status' => \App\Enums\OrderStatus::Cancelled->value,
+            'notes'  => 'Order cancelled by customer',
+        ]);
+
+        return $this->success(null, 'Order cancelled successfully');
+    }
 }

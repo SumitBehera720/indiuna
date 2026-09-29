@@ -14,9 +14,16 @@ class UpdateCouponRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'code' => ['sometimes', 'string'],
-            'discount_type' => ['sometimes', 'string'],
-            'value' => ['sometimes', 'numeric'],
+            'code' => ['sometimes', 'string', 'max:50', 'unique:coupons,code,' . $this->route('coupon')],
+            'type' => ['sometimes', 'in:percentage,fixed,free_shipping'],
+            'value' => ['sometimes', 'numeric', 'min:0'],
+            'min_order_amount' => ['nullable', 'numeric', 'min:0'],
+            'max_discount_amount' => ['nullable', 'numeric', 'min:0'],
+            'usage_limit' => ['nullable', 'integer', 'min:0'],
+            'usage_limit_per_user' => ['nullable', 'integer', 'min:0'],
+            'is_active' => ['boolean'],
+            'starts_at' => ['nullable', 'date'],
+            'expires_at' => ['nullable', 'date', 'after_or_equal:starts_at'],
         ];
     }
 }

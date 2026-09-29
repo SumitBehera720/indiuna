@@ -8,6 +8,14 @@ class OrderItemResource extends JsonResource
 {
     public function toArray($request): array
     {
+        // Try to get category from the loaded product relationship
+        $product = $this->product ?? null;
+        $category = null;
+        if ($product) {
+            $cat = $product->categories?->first();
+            $category = $cat ? ['id' => $cat->id, 'name' => $cat->name] : null;
+        }
+
         return [
             'id' => $this->id,
             'product_id' => $this->product_id,
@@ -25,6 +33,7 @@ class OrderItemResource extends JsonResource
             'tax_amount' => $this->tax_total,
             'total' => $this->grand_total,
             'meta_data' => $this->meta_data,
+            'category' => $category,
         ];
     }
 }

@@ -9,6 +9,8 @@ class UpdateOrderStatusDTO
         public readonly ?string $status = null,
         public readonly ?string $notes = null,
         public readonly bool $notify_customer = false,
+        public readonly ?string $tracking_number = null,
+        public readonly ?string $courier_name = null,
     ) {}
 
     public static function fromArray(array $data): self
@@ -17,6 +19,8 @@ class UpdateOrderStatusDTO
             status: $data['status'] ?? null,
             notes: $data['notes'] ?? null,
             notify_customer: (bool)($data['notify_customer'] ?? false),
+            tracking_number: $data['tracking_number'] ?? null,
+            courier_name: $data['courier_name'] ?? null,
         );
     }
 }

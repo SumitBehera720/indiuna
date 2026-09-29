@@ -23,7 +23,7 @@ class OrderItem extends \Illuminate\Database\Eloquent\Model
             'is_physical' => 'boolean',
             'is_digital' => 'boolean',
             'weight' => 'decimal:2',
-            'metadata' => 'array',
+            'meta_data' => 'array',
         ];
     }
 
